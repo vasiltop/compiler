@@ -38,7 +38,7 @@ std::unordered_map<std::string, TokenType> Lexer::keywords = {
     {"char", TOKEN_KEYWORD_CHAR},
     {"struct", TOKEN_KEYWORD_STRUCT}};
 
-std::unordered_map<TokenType, std::string> tokenEnumToString = {
+std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_KEYWORD_FN, "TOKEN_KEYWORD_FN"},
     {TOKEN_KEYWORD_RETURN, "TOKEN_KEYWORD"},
     {TOKEN_KEYWORD_FOR, "TOKEN_KEYWORD_FOR"},
@@ -69,7 +69,6 @@ std::unordered_map<TokenType, std::string> tokenEnumToString = {
     {TOKEN_OPERATOR_OR, "TOKEN_OPERATOR_OR"},
     {TOKEN_OPERATOR_NOT, "TOKEN_OPERATOR_NOT"},
     {TOKEN_OPERATOR_ASSIGN, "TOKEN_OPERATOR_ASSIGN"},
-    // give the rest at once
     {TOKEN_INT_LITERAL, "TOKEN_INT_LITERAL"},
     {TOKEN_STRING_LITERAL, "TOKEN_STRING_LITERAL"},
     {TOKEN_BOOL_LITERAL, "TOKEN_BOOL_LITERAL"},

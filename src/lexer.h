@@ -83,6 +83,7 @@ public:
 
     size_t getPosition();
     static std::unordered_map<std::string, TokenType> keywords;
+    static std::unordered_map<TokenType, std::string> tokenEnumToString;
     void dumpTokens();
 
 private:
