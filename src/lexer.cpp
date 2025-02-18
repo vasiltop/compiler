@@ -3,24 +3,7 @@
 #include "lexer.h"
 
 Lexer::Lexer(const std::string &input) : input(input), position(0) {}
-/*
- // Keywords
-    TOKEN_KEYWORD_FN,
-    TOKEN_KEYWORD_RETURN,
-    TOKEN_KEYWORD_FOR,
-    TOKEN_KEYWORD_WHILE,
-    TOKEN_KEYWORD_IF,
-    TOKEN_KEYWORD_ELSE,
-    TOKEN_KEYWORD_LET,
-    TOKEN_KEYWORD_TRUE,
-    TOKEN_KEYWORD_FALSE,
-    TOKEN_KEYWORD_NULL,
-    TOKEN_KEYWORD_STRING,
-    TOKEN_KEYWORD_INT,
-    TOKEN_KEYWORD_BOOL,
-    TOKEN_KEYWORD_CHAR,
-    TOKEN_KEYWORD_STRUCT,
-*/
+
 std::unordered_map<std::string, TokenType> Lexer::keywords = {
     {"fn", TOKEN_KEYWORD_FN},
     {"return", TOKEN_KEYWORD_RETURN},
