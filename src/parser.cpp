@@ -6,6 +6,31 @@ Parser::Parser(Lexer &lexer) : lexer(lexer)
     currentToken = lexer.next();
 }
 
+std::vector<std::unique_ptr<ASTNode>> Parser::ast()
+{
+    std::vector<std::unique_ptr<ASTNode>> nodes;
+    while (currentToken.type != TOKEN_EOF)
+    {
+        switch (currentToken.type)
+        {
+        case TOKEN_KEYWORD_FN:
+            nodes.push_back(parseFunctionDecl());
+            break;
+        case TOKEN_IDENTIFIER:
+            switch (lexer.peek().type)
+            {
+            case TOKEN_LEFT_PAREN:
+                nodes.push_back(parseFunctionCall());
+                break;
+            }
+            break;
+        }
+
+        currentToken = lexer.next();
+    }
+    return nodes;
+}
+
 std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
 {
 

@@ -20,26 +20,17 @@ int main()
 
 	Token token;
 	Lexer lexer(input);
-	lexer.dumpTokens();
+	Parser parser(lexer);
+	auto ast = parser.ast();
 
-	/*
-		Parser parser(lexer);
+	llvm::LLVMContext context;
+	llvm::IRBuilder<> builder(context);
+	auto module = std::make_unique<llvm::Module>("my_module", context);
 
-		auto ast = parser.parseFunctionDecl();
-		if (!ast)
-		{
-			std::cerr << "Parsing failed" << std::endl;
-			return 1;
-		}
+	for (auto &node : ast)
+	{
+		node->codegen(builder, context, *module);
+	}
 
-		llvm::LLVMContext context;
-		llvm::IRBuilder<> builder(context);
-		auto module = std::make_unique<llvm::Module>("my_module", context);
-
-		// Generate LLVM IR
-		ast->codegen(builder, context, *module);
-
-		// Print the IR
-		module->print(llvm::outs(), nullptr);
-		*/
+	module->print(llvm::outs(), nullptr);
 }

@@ -12,11 +12,12 @@ private:
     Lexer &lexer;
     Token currentToken;
 
+    std::unique_ptr<FunctionCall> parseFunctionCall();
+    std::unique_ptr<FunctionDecl> parseFunctionDecl();
+
 public:
     Parser(Lexer &lexer);
-
-    std::unique_ptr<FunctionDecl> parseFunctionDecl();
-    std::unique_ptr<FunctionCall> parseFunctionCall();
+    std::vector<std::unique_ptr<ASTNode>> ast();
 };
 
 #endif
