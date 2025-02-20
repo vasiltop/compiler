@@ -1,3 +1,3 @@
 fn main() {
-	printf("Hello, Robert");
+	printf("Kab\tlooie\n ur fat\n");
 }

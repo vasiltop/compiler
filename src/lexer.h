@@ -67,28 +67,47 @@ enum TokenType
     TOKEN_UNKNOWN
 };
 
+struct FilePosition
+{
+    size_t row;
+    size_t col;
+};
+
 struct Token
 {
     TokenType type;
     std::string value;
+    FilePosition span;
+};
+
+struct InputBuffer
+{
+    std::string buffer;
+    size_t position;
+    FilePosition positionInFile;
+
+    size_t size();
+    char advance();
+    char current();
+    bool eof();
+    void skipWhitespace();
+    void skipComment();
 };
 
 class Lexer
 {
 public:
-    Lexer(const std::string &input);
+    Lexer(const std::string &text);
 
     Token next();
     Token peek();
 
-    size_t getPosition();
     static std::unordered_map<std::string, TokenType> keywords;
     static std::unordered_map<TokenType, std::string> tokenEnumToString;
     void dumpTokens();
 
 private:
-    std::string input;
-    size_t position;
+    InputBuffer input;
 
     Token parseIdentOrKeyword();
     Token parseStringLiteral();

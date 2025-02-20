@@ -28,18 +28,15 @@ llvm::Value *FunctionCall::codegen(llvm::IRBuilder<> &builder, llvm::LLVMContext
 {
 
     llvm::FunctionType *printfType = llvm::FunctionType::get(
-        llvm::Type::getInt32Ty(context),                  // Return type (int)
-        {llvm::Type::getInt8Ty(context)->getPointerTo()}, // First argument (char*)
-        true                                              // Variadic function
-    );
+        llvm::Type::getInt32Ty(context),
+        {llvm::Type::getInt8Ty(context)->getPointerTo()},
+        true);
 
-    // Create the function declaration
     llvm::Function::Create(
         printfType,
-        llvm::Function::ExternalLinkage, // External linkage
-        "printf",                        // Function name
-        &module                          // Module
-    );
+        llvm::Function::ExternalLinkage,
+        "printf",
+        &module);
 
     llvm::Function *func = module.getFunction(name);
 

@@ -88,7 +88,6 @@ Parser::parseFunctionCall()
     if (currentToken.type != TOKEN_IDENTIFIER)
     {
         std::cerr << "Expected 'identifier' in function call, received: " << currentToken.type << std::endl;
-        std::cerr << "Position:" << lexer.getPosition() << std::endl;
     }
     std::string name = currentToken.value;
     currentToken = lexer.next();

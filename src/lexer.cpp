@@ -2,7 +2,70 @@
 
 #include "lexer.h"
 
-Lexer::Lexer(const std::string &input) : input(input), position(0) {}
+size_t InputBuffer::size()
+{
+    return buffer.size();
+}
+
+char InputBuffer::advance()
+{
+    if (position >= buffer.size())
+    {
+        return '\0';
+    }
+
+    char currentChar = buffer[position];
+    position++;
+    positionInFile.col++;
+
+    if (currentChar == '\n')
+    {
+        positionInFile.row++;
+        positionInFile.col = 0;
+    }
+
+    return currentChar;
+}
+
+char InputBuffer::current()
+{
+    if (position >= buffer.size())
+    {
+        return '\0';
+    }
+
+    return buffer[position];
+}
+
+void InputBuffer::skipWhitespace()
+{
+    while (position < buffer.size() && std::isspace(buffer[position]))
+    {
+        advance();
+    }
+}
+
+void InputBuffer::skipComment()
+{
+    if (position + 1 < buffer.size() && buffer[position] == '/' && buffer[position + 1] == '/')
+    {
+        while (position < buffer.size() && buffer[position] != '\n')
+        {
+            advance();
+        }
+    }
+}
+
+bool InputBuffer::eof()
+{
+    return position >= buffer.size();
+}
+
+Lexer::Lexer(const std::string &text)
+{
+    input = InputBuffer{text, 0};
+    input.positionInFile = {1, 0};
+}
 
 std::unordered_map<std::string, TokenType> Lexer::keywords = {
     {"fn", TOKEN_KEYWORD_FN},
@@ -77,34 +140,20 @@ void Lexer::dumpTokens()
     do
     {
         token = next();
-        std::cout << "Token: " << tokenEnumToString[token.type] << " Value: " << token.value << std::endl;
+        std::cout << "Token: " << tokenEnumToString[token.type] << " Value: " << token.value
+                  << " Position: Row: " << token.span.row << " Column: " << token.span.col << std::endl;
     } while (token.type != TOKEN_EOF);
-}
-
-size_t Lexer::getPosition()
-{
-    return position;
-}
-
-Token Lexer::peek()
-{
-    size_t oldPosition = position;
-    Token token = next();
-    position = oldPosition;
-    return token;
 }
 
 Token Lexer::next()
 {
-    while (position < input.size())
-    {
-        char currentChar = input[position];
 
-        if (std::isspace(currentChar))
-        {
-            position++;
-            continue;
-        }
+    while (!input.eof())
+    {
+        input.skipWhitespace();
+        input.skipComment();
+
+        char currentChar = input.current();
 
         if (std::isalpha(currentChar))
         {
@@ -126,190 +175,251 @@ Token Lexer::next()
             return parseChar();
         }
 
+        FilePosition position = input.positionInFile;
+
         switch (currentChar)
         {
 
         // Arithmetic operators
         case '+':
-            position++;
-            return {TOKEN_OPERATOR_PLUS, "+"};
+            input.advance();
+            return {TOKEN_OPERATOR_PLUS, "+", position};
         case '-':
-            position++;
 
-            if (position < input.size() && input[position] == '>')
+            input.advance();
+            if (input.current() == '>')
             {
-                position++;
-                return {TOKEN_ARROW, "->"};
+                input.advance();
+                return {TOKEN_ARROW, "->", position};
             }
-            return {TOKEN_OPERATOR_MINUS, "-"};
+            return {TOKEN_OPERATOR_MINUS, "-", position};
         case '*':
-            position++;
-            return {TOKEN_OPERATOR_MUL, "*"};
+            input.advance();
+            return {TOKEN_OPERATOR_MUL, "*", position};
         case '/':
-            position++;
-            return {TOKEN_OPERATOR_DIV, "/"};
+            input.advance();
+            return {TOKEN_OPERATOR_DIV, "/", position};
         case '%':
-            position++;
-            return {TOKEN_OPERATOR_MOD, "%"};
+            input.advance();
+            return {TOKEN_OPERATOR_MOD, "%", position};
 
         // Operators
         case '=':
-            position++;
+            input.advance();
 
-            if (position < input.size() && input[position] == '=')
+            if (input.current() == '=')
             {
-                position++;
-                return {TOKEN_OPERATOR_EQUAL, "=="};
+                input.advance();
+                return {TOKEN_OPERATOR_EQUAL, "==", position};
             }
-            return {TOKEN_OPERATOR_ASSIGN, "="};
+
+            return {TOKEN_OPERATOR_ASSIGN, "=", position};
         case '<':
-            position++;
 
-            if (position < input.size() && input[position] == '=')
+            input.advance();
+
+            if (input.current() == '=')
             {
-                position++;
-                return {TOKEN_OPERATOR_LESS_EQUAL, "<="};
+                input.advance();
+                return {TOKEN_OPERATOR_LESS_EQUAL, "<=", position};
             }
 
-            return {TOKEN_OPERATOR_LESS, "<"};
+            return {TOKEN_OPERATOR_LESS, "<", position};
         case '>':
-            position++;
+            input.advance();
 
-            if (position < input.size() && input[position] == '=')
+            if (input.current() == '=')
             {
-                position++;
-                return {TOKEN_OPERATOR_GREATER_EQUAL, ">="};
+                input.advance();
+                return {TOKEN_OPERATOR_GREATER_EQUAL, ">=", position};
             }
-            return {TOKEN_OPERATOR_GREATER, ">"};
+
+            return {TOKEN_OPERATOR_GREATER, ">", position};
         case '&':
-            position++;
-            if (position < input.size() && input[position] == '&')
+            input.advance();
+            if (input.current() == '&')
             {
-                position++;
-                return {TOKEN_OPERATOR_AND, "&&"};
+                input.advance();
+                return {TOKEN_OPERATOR_AND, "&&", position};
             }
-            return {TOKEN_UNKNOWN, "&"}; // TODO: add TOKEN_REF
+            return {TOKEN_UNKNOWN, "&", position};
         case '|':
-            position++;
-            if (position < input.size() && input[position] == '|')
+            input.advance();
+            if (input.current() == '|')
             {
-                position++;
-                return {TOKEN_OPERATOR_OR, "||"};
+                input.advance();
+                return {TOKEN_OPERATOR_OR, "||", position};
             }
-            return {TOKEN_UNKNOWN, "|"};
+            return {TOKEN_UNKNOWN, "|", position};
         case '!':
-            position++;
-
-            if (position < input.size() && input[position] == '=')
+            input.advance();
+            if (input.current() == '=')
             {
-                position++;
-                return {TOKEN_OPERATOR_NOT_EQUAL, "!="};
+                input.advance();
+                return {TOKEN_OPERATOR_NOT_EQUAL, "!=", position};
             }
-            return {TOKEN_OPERATOR_NOT, "!"};
+            return {TOKEN_OPERATOR_NOT, "!", position};
 
         // Delimiters
         case '{':
-            position++;
-            return {TOKEN_LEFT_BRACE, "{"};
+            input.advance();
+            return {TOKEN_LEFT_BRACE, "{", position};
+
         case '}':
-            position++;
-            return {TOKEN_RIGHT_BRACE, "}"};
+            input.advance();
+            return {TOKEN_RIGHT_BRACE, "}", position};
         case '(':
-            position++;
-            return {TOKEN_LEFT_PAREN, "("};
+            input.advance();
+            return {TOKEN_LEFT_PAREN, "(", position};
         case ')':
-            position++;
-            return {TOKEN_RIGHT_PAREN, ")"};
+            input.advance();
+            return {TOKEN_RIGHT_PAREN, ")", position};
         case '[':
-            position++;
-            return {TOKEN_LEFT_SQUARE_BRACKET, "["};
+            input.advance();
+            return {TOKEN_LEFT_SQUARE_BRACKET, "[", position};
         case ']':
-            position++;
-            return {TOKEN_RIGHT_SQUARE_BRACKET, "]"};
+            input.advance();
+            return {TOKEN_RIGHT_SQUARE_BRACKET, "]", position};
 
         case ';':
-            position++;
-            return {TOKEN_SEMICOLON, ";"};
+            input.advance();
+            return {TOKEN_SEMICOLON, ";", position};
         case ',':
-            position++;
-            return {TOKEN_COMMA, ","};
+            input.advance();
+            return {TOKEN_COMMA, ",", position};
         case '.':
-            position++;
-            return {TOKEN_DOT, "."};
+            input.advance();
+            return {TOKEN_DOT, ".", position};
         case ':':
-            position++;
-            return {TOKEN_COLON, ":"};
+            input.advance();
+            return {TOKEN_COLON, ":", position};
         default:
-            position++;
-            return {TOKEN_UNKNOWN, std::string(1, currentChar)};
+            input.advance();
+            return {TOKEN_UNKNOWN, std::string(1, currentChar), position};
         }
     }
-    return {TOKEN_EOF, "EOF"};
+    return {TOKEN_EOF, "EOF", input.positionInFile};
+}
+
+Token Lexer::peek()
+{
+    size_t position = input.position;
+    FilePosition filePosition = input.positionInFile;
+
+    Token token = next();
+
+    input.position = position;
+    input.positionInFile = filePosition;
+
+    return token;
 }
 
 Token Lexer::parseIdentOrKeyword()
 {
     std::string lexeme;
-    while (position < input.size() && (std::isalnum(input[position]) || input[position] == '_'))
+    FilePosition position = input.positionInFile;
+
+    while (!input.eof() && (std::isalnum(input.current()) || input.current() == '_'))
     {
-        lexeme += input[position];
-        position++;
+        lexeme += input.current();
+        input.advance();
     }
 
     if (keywords.find(lexeme) != keywords.end())
     {
-        return {keywords[lexeme], lexeme};
+        return {keywords[lexeme], lexeme, position};
     }
 
-    return {TOKEN_IDENTIFIER, lexeme};
+    return {TOKEN_IDENTIFIER, lexeme, position};
 }
 
 Token Lexer::parseStringLiteral()
 {
     std::string literal;
-    position++;
+    FilePosition position = input.positionInFile;
+    input.advance();
 
-    while (position < input.size() && input[position] != '"')
+    while (!input.eof() && input.current() != '"')
     {
-        literal += input[position];
-        position++;
+
+        if (input.current() == '\\')
+        {
+
+            input.advance();
+
+            if (input.eof())
+            {
+                break;
+            }
+
+            switch (input.current())
+            {
+            case 'n':
+                literal += '\n';
+                break;
+            case 't':
+                literal += '\t';
+                break;
+            case 'r':
+                literal += '\r';
+                break;
+            case '\\':
+                literal += '\\';
+                break;
+            case '"':
+                literal += '"';
+                break;
+            default:
+                literal += input.current();
+                break;
+            }
+
+            input.advance();
+            continue;
+        }
+
+        literal += input.current();
+        input.advance();
     }
 
-    if (position < input.size() && input[position] == '"')
+    if (!input.eof() && input.current() == '"')
     {
-        position++;
+        input.advance();
     }
 
-    return {TOKEN_STRING_LITERAL, literal};
+    return {TOKEN_STRING_LITERAL, literal, position};
 }
 
 Token Lexer::parseInteger()
 {
     std::string number;
-    while (position < input.size() && std::isdigit(input[position]))
+    FilePosition position = input.positionInFile;
+
+    while (!input.eof() && std::isdigit(input.current()))
     {
-        number += input[position];
-        position++;
+        number += input.current();
+        input.advance();
     }
 
-    return {TOKEN_INT_LITERAL, number};
+    return {TOKEN_INT_LITERAL, number, position};
 }
 
 Token Lexer::parseChar()
 {
     std::string character;
-    position++;
+    FilePosition position = input.positionInFile;
+    input.advance();
 
-    if (position < input.size())
+    if (!input.eof())
     {
-        character += input[position];
-        position++;
+        character += input.current();
+        input.advance();
     }
 
-    if (position < input.size() && input[position] == '\'')
+    if (!input.eof() && input.current() == '\'')
     {
-        position++;
+        input.advance();
     }
 
-    return {TOKEN_CHAR_LITERAL, character};
+    return {TOKEN_CHAR_LITERAL, character, position};
 }
