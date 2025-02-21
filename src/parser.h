@@ -21,6 +21,8 @@ private:
 
     std::unique_ptr<FunctionCall> parseFunctionCall(std::string name);
     std::unique_ptr<FunctionDecl> parseFunctionDecl();
+    std::unique_ptr<VariableDeclaration> parseVariableDeclaration();
+    std::unique_ptr<TypedIdent> parseTypedIdent();
     std::unique_ptr<Return> parseReturn();
     std::unique_ptr<ASTNode> parseExpression(int precedence);
     std::unique_ptr<ASTNode> parsePrimary();

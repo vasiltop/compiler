@@ -88,9 +88,27 @@ std::unique_ptr<ASTNode> Parser::parseNext()
     case TOKEN_HASHTAG:
         return parseInclude();
         break;
+    case TOKEN_KEYWORD_LET:
+        return parseVariableDeclaration();
+        break;
     }
 
     return nullptr;
+}
+
+std::unique_ptr<VariableDeclaration> Parser::parseVariableDeclaration()
+{
+    auto ident = parseTypedIdent();
+
+    EXPECT_TOKEN(TOKEN_OPERATOR_ASSIGN, "Expected '='");
+    lexer.next();
+
+    auto expr = parseExpression(0);
+
+    EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
+    lexer.next();
+
+    return std::make_unique<VariableDeclaration>(std::move(ident), std::move(expr));
 }
 
 std::unique_ptr<Return> Parser::parseReturn()
@@ -140,18 +158,7 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
             continue;
         }
 
-        EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier for argument");
-        std::string argName = lexer.peek().value;
-        lexer.next();
-
-        EXPECT_TOKEN(TOKEN_COLON, "Expected ':'");
-        lexer.next();
-
-        EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier type for argument");
-        Token type = lexer.peek();
-        lexer.next();
-
-        args.push_back(std::make_unique<TypedIdent>(type, argName));
+        args.push_back(parseTypedIdent());
     }
 
     EXPECT_TOKEN(TOKEN_RIGHT_PAREN, "Expected ')'");
@@ -178,6 +185,23 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
     lexer.next();
 
     return funcDecl;
+}
+
+std::unique_ptr<TypedIdent> Parser::parseTypedIdent()
+{
+
+    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier for argument");
+    std::string name = lexer.peek().value;
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_COLON, "Expected ':'");
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier type for argument");
+    Token type = lexer.peek();
+    lexer.next();
+
+    return std::make_unique<TypedIdent>(type, name);
 }
 
 std::unique_ptr<FunctionCall>

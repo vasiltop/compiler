@@ -110,3 +110,12 @@ void Return::display(int level)
     displayStringAtIndent(level, "Return:");
     expr->display(level + 1);
 }
+
+VariableDeclaration::VariableDeclaration(std::unique_ptr<TypedIdent> ident, std::unique_ptr<ASTNode> expr) : ident(std::move(ident)), expr(std::move(expr)) {}
+
+void VariableDeclaration::display(int level)
+{
+    displayStringAtIndent(level, "VariableDeclaration:");
+    ident->display(level + 1);
+    expr->display(level + 1);
+}

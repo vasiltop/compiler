@@ -20,10 +20,7 @@ run:
 compile-ir:
 	./$(GEN) > $(IR_TARGET)
 	clang -o $(TARGET) $(IR_TARGET)
-
-run-compiled:
 	./$(TARGET)
-	@echo "Exit Status: $$?"
 
 clean:
 	rm -f $(TARGET)

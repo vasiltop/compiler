@@ -112,4 +112,13 @@ struct Return : public ASTNode
     void display(int level) override;
 };
 
+struct VariableDeclaration : public ASTNode
+{
+    std::unique_ptr<TypedIdent> ident;
+    std::unique_ptr<ASTNode> expr;
+
+    VariableDeclaration(std::unique_ptr<TypedIdent> ident, std::unique_ptr<ASTNode> expr);
+    void display(int level) override;
+};
+
 #endif
