@@ -1,4 +1,5 @@
 #include "ast.h"
+#include <iostream>
 
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -6,52 +7,71 @@
 
 FunctionDecl::FunctionDecl(const std::string name) : name(name) {}
 
-llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::LLVMContext &context, llvm::Module &module)
+void FunctionDecl::display()
 {
-    llvm::FunctionType *funcType = llvm::FunctionType::get(llvm::Type::getVoidTy(context), false);
-    llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, module);
-    llvm::BasicBlock *block = llvm::BasicBlock::Create(context, "entry", func);
-    builder.SetInsertPoint(block);
+    std::cout << "FunctionDecl: " << name << std::endl;
 
-    for (auto &stmt : body)
+    for (auto &node : body)
     {
-        stmt->codegen(builder, context, module);
+        node->display();
     }
-
-    builder.CreateRetVoid();
-
-    return func;
 }
 
-FunctionCall::FunctionCall(const std::string &name) : name(name) {}
-llvm::Value *FunctionCall::codegen(llvm::IRBuilder<> &builder, llvm::LLVMContext &context, llvm::Module &module)
+FunctionCall::FunctionCall(const std::string &name, std::vector<std::unique_ptr<ASTNode>> &args) : name(name), args(std::move(args)) {}
+
+void FunctionCall::display()
 {
+    std::cout << "FunctionCall: " << name << std::endl;
 
-    llvm::FunctionType *printfType = llvm::FunctionType::get(
-        llvm::Type::getInt32Ty(context),
-        {llvm::Type::getInt8Ty(context)->getPointerTo()},
-        true);
-
-    llvm::Function::Create(
-        printfType,
-        llvm::Function::ExternalLinkage,
-        "printf",
-        &module);
-
-    llvm::Function *func = module.getFunction(name);
-
-    std::vector<llvm::Value *> argValues;
     for (auto &arg : args)
     {
-        argValues.push_back(arg->codegen(builder, context, module));
+        arg->display();
     }
-    return builder.CreateCall(func, argValues);
 }
 
 StringLiteral::StringLiteral(const std::string &value) : value(value) {}
 
-llvm::Value *StringLiteral::codegen(llvm::IRBuilder<> &builder, llvm::LLVMContext &context, llvm::Module &module)
+void StringLiteral::display()
 {
-    llvm::Value *str = builder.CreateGlobalStringPtr(value);
-    return str;
+    std::cout << "StringLiteral: " << value << std::endl;
+}
+
+IntLiteral::IntLiteral(int value) : value(value) {}
+
+void IntLiteral::display()
+{
+    std::cout << "IntLiteral: " << value << std::endl;
+}
+
+BoolLiteral::BoolLiteral(bool value) : value(value) {}
+
+void BoolLiteral::display()
+{
+    std::cout << "BoolLiteral: " << value << std::endl;
+}
+
+BinaryExpr::BinaryExpr(Token op, std::unique_ptr<ASTNode> lhs, std::unique_ptr<ASTNode> rhs) : op(op), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
+
+void BinaryExpr::display()
+{
+    std::cout << "BinaryExpr: " << op.value << std::endl;
+    std::cout << "LHS: " << std::endl;
+    lhs->display();
+    std::cout << "RHS: " << std::endl;
+    rhs->display();
+}
+
+UnaryExpr::UnaryExpr(Token op, std::unique_ptr<ASTNode> expr) : op(op), expr(std::move(expr)) {}
+
+void UnaryExpr::display()
+{
+    std::cout << "UnaryExpr: " << op.value << std::endl;
+    expr->display();
+}
+
+Variable::Variable(const std::string &name) : name(name) {}
+
+void Variable::display()
+{
+    std::cout << "Variable: " << name << std::endl;
 }

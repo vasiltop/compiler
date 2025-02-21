@@ -141,7 +141,7 @@ void Lexer::dumpTokens()
     {
         token = next();
         std::cout << "Token: " << tokenEnumToString[token.type] << " Value: " << token.value
-                  << " Position: Row: " << token.span.row << " Column: " << token.span.col << std::endl;
+                  << " Position: Row: " << token.position.row << " Column: " << token.position.col << std::endl;
     } while (token.type != TOKEN_EOF);
 }
 

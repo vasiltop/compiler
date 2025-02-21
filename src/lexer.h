@@ -77,7 +77,7 @@ struct Token
 {
     TokenType type;
     std::string value;
-    FilePosition span;
+    FilePosition position;
 };
 
 struct InputBuffer

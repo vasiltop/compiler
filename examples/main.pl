@@ -1,3 +1,3 @@
 fn main() {
-	printf("Kab\tlooie\n ur fat\n");
+	printf(5 + (2 + 3));
 }
