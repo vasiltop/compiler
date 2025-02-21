@@ -1,3 +1,3 @@
 fn main() {
-	printf(5 + (2 + 3));
+	printf(2 / 5 + (2 + 3));
 }

@@ -10,7 +10,7 @@
 struct ASTNode
 {
     virtual ~ASTNode() = default;
-    virtual void display() = 0;
+    virtual void display(int level) = 0;
 };
 
 struct FunctionDecl : public ASTNode
@@ -19,7 +19,7 @@ struct FunctionDecl : public ASTNode
     std::vector<std::unique_ptr<ASTNode>> body;
 
     FunctionDecl(const std::string name);
-    void display() override;
+    void display(int level) override;
 };
 
 struct FunctionCall : public ASTNode
@@ -28,7 +28,7 @@ struct FunctionCall : public ASTNode
     std::vector<std::unique_ptr<ASTNode>> args;
 
     FunctionCall(const std::string &name, std::vector<std::unique_ptr<ASTNode>> &args);
-    void display() override;
+    void display(int level) override;
 };
 
 struct StringLiteral : public ASTNode
@@ -36,7 +36,7 @@ struct StringLiteral : public ASTNode
     std::string value;
 
     StringLiteral(const std::string &value);
-    void display() override;
+    void display(int level) override;
 };
 
 struct IntLiteral : public ASTNode
@@ -44,7 +44,7 @@ struct IntLiteral : public ASTNode
     int value;
 
     IntLiteral(int value);
-    void display() override;
+    void display(int level) override;
 };
 
 struct BoolLiteral : public ASTNode
@@ -52,7 +52,7 @@ struct BoolLiteral : public ASTNode
     bool value;
 
     BoolLiteral(bool value);
-    void display() override;
+    void display(int level) override;
 };
 
 struct BinaryExpr : public ASTNode
@@ -62,7 +62,8 @@ struct BinaryExpr : public ASTNode
     std::unique_ptr<ASTNode> rhs;
 
     BinaryExpr(Token op, std::unique_ptr<ASTNode> lhs, std::unique_ptr<ASTNode> rhs);
-    void display() override;
+    void display(int level) override;
+    void displayInner(int level);
 };
 
 struct UnaryExpr : public ASTNode
@@ -71,7 +72,7 @@ struct UnaryExpr : public ASTNode
     std::unique_ptr<ASTNode> expr;
 
     UnaryExpr(Token op, std::unique_ptr<ASTNode> expr);
-    void display() override;
+    void display(int level) override;
 };
 
 struct Variable : public ASTNode
@@ -79,7 +80,7 @@ struct Variable : public ASTNode
     std::string name;
 
     Variable(const std::string &name);
-    void display() override;
+    void display(int level) override;
 };
 
 #endif

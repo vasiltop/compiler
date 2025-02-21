@@ -5,73 +5,78 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
 
+static void displayStringAtIndent(int indent, const std::string &str)
+{
+    std::string indentStr(indent * 2, ' ');
+    std::cout << indentStr << str << std::endl;
+}
+
 FunctionDecl::FunctionDecl(const std::string name) : name(name) {}
 
-void FunctionDecl::display()
+void FunctionDecl::display(int level)
 {
-    std::cout << "FunctionDecl: " << name << std::endl;
+    displayStringAtIndent(level, "FunctionDecl: " + name);
 
     for (auto &node : body)
     {
-        node->display();
+        node->display(level + 1);
     }
 }
 
 FunctionCall::FunctionCall(const std::string &name, std::vector<std::unique_ptr<ASTNode>> &args) : name(name), args(std::move(args)) {}
 
-void FunctionCall::display()
+void FunctionCall::display(int level)
 {
-    std::cout << "FunctionCall: " << name << std::endl;
+    displayStringAtIndent(level, "FunctionCall: " + name);
 
     for (auto &arg : args)
     {
-        arg->display();
+        arg->display(level + 1);
     }
 }
 
 StringLiteral::StringLiteral(const std::string &value) : value(value) {}
 
-void StringLiteral::display()
+void StringLiteral::display(int level)
 {
-    std::cout << "StringLiteral: " << value << std::endl;
+
+    displayStringAtIndent(level, "StringLiteral: " + value);
 }
 
 IntLiteral::IntLiteral(int value) : value(value) {}
 
-void IntLiteral::display()
+void IntLiteral::display(int level)
 {
-    std::cout << "IntLiteral: " << value << std::endl;
+    displayStringAtIndent(level, "IntLiteral: " + std::to_string(value));
 }
 
 BoolLiteral::BoolLiteral(bool value) : value(value) {}
 
-void BoolLiteral::display()
+void BoolLiteral::display(int level)
 {
-    std::cout << "BoolLiteral: " << value << std::endl;
+    displayStringAtIndent(level, "BoolLiteral: " + std::string(value ? "true" : "false"));
 }
 
 BinaryExpr::BinaryExpr(Token op, std::unique_ptr<ASTNode> lhs, std::unique_ptr<ASTNode> rhs) : op(op), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
-void BinaryExpr::display()
+void BinaryExpr::display(int level)
 {
-    std::cout << "BinaryExpr: " << op.value << std::endl;
-    std::cout << "LHS: " << std::endl;
-    lhs->display();
-    std::cout << "RHS: " << std::endl;
-    rhs->display();
+    displayStringAtIndent(level, "BinaryExpr: " + op.value);
+    lhs->display(level + 1);
+    rhs->display(level + 1);
 }
 
 UnaryExpr::UnaryExpr(Token op, std::unique_ptr<ASTNode> expr) : op(op), expr(std::move(expr)) {}
 
-void UnaryExpr::display()
+void UnaryExpr::display(int level)
 {
-    std::cout << "UnaryExpr: " << op.value << std::endl;
-    expr->display();
+    displayStringAtIndent(level, "UnaryExpr: " + op.value);
+    expr->display(level + 1);
 }
 
 Variable::Variable(const std::string &name) : name(name) {}
 
-void Variable::display()
+void Variable::display(int level)
 {
-    std::cout << "Variable: " << name << std::endl;
+    displayStringAtIndent(level, "Variable: " + name);
 }

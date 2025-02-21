@@ -25,7 +25,7 @@ int main()
 
 	for (auto &node : ast)
 	{
-		node->display();
+		node->display(0);
 	}
 
 	/*
