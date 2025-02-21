@@ -120,8 +120,10 @@ Parser::parseFunctionCall()
     EXPECT_TOKEN(TOKEN_RIGHT_PAREN, "Expected ')'");
     currentToken = lexer.next();
 
-    EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
-    currentToken = lexer.next();
+    if (lexer.peek().type == TOKEN_SEMICOLON)
+    {
+        currentToken = lexer.next();
+    }
 
     auto funcCall = std::make_unique<FunctionCall>(name, args);
     return funcCall;
@@ -204,7 +206,7 @@ Parser::parsePrimary()
 std::unique_ptr<ASTNode>
 Parser::parseUnary()
 {
-    if (currentToken.type == TOKEN_OPERATOR_NOT)
+    if (currentToken.type == TOKEN_OPERATOR_NOT || currentToken.type == TOKEN_OPERATOR_MINUS)
     {
         Token op = currentToken;
         currentToken = lexer.next();

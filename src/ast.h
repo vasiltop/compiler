@@ -7,6 +7,8 @@
 
 #include "lexer.h"
 
+static void displayStringAtIndent(int indent, const std::string &str);
+
 struct ASTNode
 {
     virtual ~ASTNode() = default;
