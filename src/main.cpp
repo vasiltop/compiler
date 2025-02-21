@@ -4,40 +4,25 @@
 
 #include "lexer.h"
 #include "parser.h"
-
+#include "compiler.h"
 #include <string>
 #include <iostream>
-#include <fstream>
-#include <sstream>
 
-int main()
+int main(int argc, char **argv)
 {
-	std::ifstream file("examples/main.pl");
-	std::stringstream buffer;
-	buffer << file.rdbuf();
 
-	std::string input = buffer.str();
-
-	Token token;
-	Lexer lexer(input);
-	Parser parser(lexer);
-	auto ast = parser.ast();
-
-	for (auto &node : ast)
-	{
-		node->display(0);
-	}
+	Compiler compiler(argc, argv);
 
 	/*
-	llvm::LLVMContext context;
-	llvm::IRBuilder<> builder(context);
-	auto module = std::make_unique<llvm::Module>("my_module", context);
+llvm::LLVMContext context;
+llvm::IRBuilder<> builder(context);
+auto module = std::make_unique<llvm::Module>("my_module", context);
 
-	for (auto &node : ast)
-	{
-		node->codegen(builder, context, *module);
-	}
+for (auto &node : ast)
+{
+	node->codegen(builder, context, *module);
+}
 
-	module->print(llvm::outs(), nullptr);
-	*/
+module->print(llvm::outs(), nullptr);
+*/
 }

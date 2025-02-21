@@ -2,10 +2,10 @@
 #include "parser.h"
 
 #define EXPECT_TOKEN(tokenType, errorMessage)                                      \
-    if (currentToken.type != tokenType)                                            \
+    if (lexer.peek().type != tokenType)                                            \
     {                                                                              \
-        std::cerr << "filename:"                                                   \
-                  << currentToken.position.row << ":" << currentToken.position.col \
+        std::cerr << lexer.input.filename << ":"                                   \
+                  << lexer.peek().position.row << ":" << lexer.peek().position.col \
                   << ": error: " << errorMessage                                   \
                   << std::endl;                                                    \
         return nullptr;                                                            \
@@ -39,17 +39,14 @@ int getPrecedence(TokenType type)
     }
 }
 
-Parser::Parser(Lexer &lexer) : lexer(lexer)
-{
-    currentToken = lexer.next();
-}
+Parser::Parser(Compiler *compiler, std::string filename) : compiler(compiler), lexer(filename) {}
 
-std::vector<std::unique_ptr<ASTNode>> Parser::ast()
+std::vector<std::unique_ptr<ASTNode>> Parser::parse()
 {
     std::vector<std::unique_ptr<ASTNode>> nodes;
-    while (currentToken.type != TOKEN_EOF)
+    while (lexer.peek().type != TOKEN_EOF)
     {
-        switch (currentToken.type)
+        switch (lexer.next().type)
         {
         case TOKEN_KEYWORD_FN:
             nodes.push_back(parseFunctionDecl());
@@ -62,35 +59,57 @@ std::vector<std::unique_ptr<ASTNode>> Parser::ast()
                 break;
             }
             break;
-        }
 
-        currentToken = lexer.next();
+        case TOKEN_HASHTAG:
+            nodes.push_back(parseInclude());
+            break;
+        }
     }
+
     return nodes;
+}
+
+std::unique_ptr<Include> Parser::parseInclude()
+{
+    EXPECT_TOKEN(TOKEN_KEYWORD_INCLUDE, "Expected keyword include");
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_STRING_LITERAL, "Expected string literal");
+    std::string filename = lexer.peek().value;
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
+    lexer.next();
+
+    compiler->parse(filename);
+
+    return std::make_unique<Include>(filename);
 }
 
 std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
 {
 
-    EXPECT_TOKEN(TOKEN_KEYWORD_FN, "Expected keyword fn");
-    currentToken = lexer.next();
-
     EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier");
-    std::string funcName = currentToken.value;
-    currentToken = lexer.next();
+    std::string funcName = lexer.peek().value;
+    lexer.next();
 
     EXPECT_TOKEN(TOKEN_LEFT_PAREN, "Expected '('");
-    currentToken = lexer.next();
+    lexer.next();
+
+    // TODO: parse args
 
     EXPECT_TOKEN(TOKEN_RIGHT_PAREN, "Expected ')'");
-    currentToken = lexer.next();
+    lexer.next();
 
     EXPECT_TOKEN(TOKEN_LEFT_BRACE, "Expected '{'");
-    currentToken = lexer.next();
+    lexer.next();
 
     auto funcDecl = std::make_unique<FunctionDecl>(funcName);
 
-    funcDecl->body.push_back(parseFunctionCall());
+    funcDecl->body.push_back(parseFunctionCall()); // hard coded for now
+
+    EXPECT_TOKEN(TOKEN_RIGHT_BRACE, "Expected '}'");
+    lexer.next();
 
     return funcDecl;
 }
@@ -99,18 +118,18 @@ std::unique_ptr<FunctionCall>
 Parser::parseFunctionCall()
 {
     EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier");
-    std::string name = currentToken.value;
-    currentToken = lexer.next();
+    std::string name = lexer.peek().value;
+    lexer.next();
 
     EXPECT_TOKEN(TOKEN_LEFT_PAREN, "Expected '('");
-    currentToken = lexer.next();
+    lexer.next();
 
     std::vector<std::unique_ptr<ASTNode>> args;
-    while (currentToken.type != TOKEN_RIGHT_PAREN)
+    while (lexer.peek().type != TOKEN_RIGHT_PAREN)
     {
-        if (currentToken.type == TOKEN_COMMA)
+        if (lexer.peek().type == TOKEN_COMMA)
         {
-            currentToken = lexer.next();
+            lexer.next();
             continue;
         }
 
@@ -118,11 +137,11 @@ Parser::parseFunctionCall()
     }
 
     EXPECT_TOKEN(TOKEN_RIGHT_PAREN, "Expected ')'");
-    currentToken = lexer.next();
+    lexer.next();
 
     if (lexer.peek().type == TOKEN_SEMICOLON)
     {
-        currentToken = lexer.next();
+        lexer.next();
     }
 
     auto funcCall = std::make_unique<FunctionCall>(name, args);
@@ -136,15 +155,15 @@ Parser::parseExpression(int precedence = 0)
 
     while (true)
     {
-        int currentPrecedence = getPrecedence(currentToken.type);
+        int currentPrecedence = getPrecedence(lexer.peek().type);
 
         if (currentPrecedence < precedence)
         {
             break;
         }
 
-        Token op = currentToken;
-        currentToken = lexer.next();
+        Token op = lexer.peek();
+        lexer.next();
 
         auto right = parseExpression(currentPrecedence + 1);
 
@@ -157,45 +176,46 @@ Parser::parseExpression(int precedence = 0)
 std::unique_ptr<ASTNode>
 Parser::parsePrimary()
 {
-    switch (currentToken.type)
+    switch (lexer.peek().type)
     {
     case TOKEN_INT_LITERAL:
     {
-        auto intLiteral = std::make_unique<IntLiteral>(std::stoi(currentToken.value));
-        currentToken = lexer.next();
+        auto intLiteral = std::make_unique<IntLiteral>(std::stoi(lexer.peek().value));
+        lexer.next();
         return intLiteral;
     }
     case TOKEN_STRING_LITERAL:
     {
-        auto stringLiteral = std::make_unique<StringLiteral>(currentToken.value);
-        currentToken = lexer.next();
+        auto stringLiteral = std::make_unique<StringLiteral>(lexer.peek().value);
+        lexer.next();
         return stringLiteral;
     }
     case TOKEN_BOOL_LITERAL:
     {
-        auto boolLiteral = std::make_unique<BoolLiteral>(currentToken.value == "true");
-        currentToken = lexer.next();
+        auto boolLiteral = std::make_unique<BoolLiteral>(lexer.peek().value == "true");
+        lexer.next();
         return boolLiteral;
     }
     case TOKEN_IDENTIFIER:
     {
-        std::string name = currentToken.value;
+        std::string name = lexer.peek().value;
+        lexer.next();
 
         switch (lexer.peek().type)
         {
         case TOKEN_LEFT_PAREN:
             return parseFunctionCall();
         default:
-            currentToken = lexer.next();
+            lexer.next();
             return std::make_unique<Variable>(name);
         }
     }
     case TOKEN_LEFT_PAREN:
     {
-        currentToken = lexer.next();
+        lexer.next();
         auto expr = parseExpression();
         EXPECT_TOKEN(TOKEN_RIGHT_PAREN, "Expected ')'");
-        currentToken = lexer.next();
+        lexer.next();
         return expr;
     }
     }
@@ -206,10 +226,10 @@ Parser::parsePrimary()
 std::unique_ptr<ASTNode>
 Parser::parseUnary()
 {
-    if (currentToken.type == TOKEN_OPERATOR_NOT || currentToken.type == TOKEN_OPERATOR_MINUS)
+    if (lexer.peek().type == TOKEN_OPERATOR_NOT || lexer.peek().type == TOKEN_OPERATOR_MINUS)
     {
-        Token op = currentToken;
-        currentToken = lexer.next();
+        Token op = lexer.peek();
+        lexer.next();
         auto expr = parseUnary();
         return std::make_unique<UnaryExpr>(op, std::move(expr));
     }

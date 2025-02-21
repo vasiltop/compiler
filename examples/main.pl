@@ -1,3 +1,5 @@
+#include "examples/other.pl";
+
 fn main() {
-	printf(returnBoolean() || (variab|| true));
+	printf("hello world\n");
 }

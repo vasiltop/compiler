@@ -80,3 +80,10 @@ void Variable::display(int level)
 {
     displayStringAtIndent(level, "Variable: " + name);
 }
+
+Include::Include(const std::string &filename) : filename(filename) {}
+
+void Include::display(int level)
+{
+    displayStringAtIndent(level, "Include: " + filename);
+}

@@ -4,15 +4,18 @@
 #include <memory>
 
 #include "lexer.h"
+#include "compiler.h"
 #include "ast.h"
+
+class Compiler;
 
 int getPrecedence(TokenType token);
 
 class Parser
 {
 private:
-    Lexer &lexer;
-    Token currentToken;
+    Lexer lexer;
+    Compiler *compiler;
 
     std::string file_name;
 
@@ -21,10 +24,11 @@ private:
     std::unique_ptr<ASTNode> parseExpression(int precedence);
     std::unique_ptr<ASTNode> parsePrimary();
     std::unique_ptr<ASTNode> parseUnary();
+    std::unique_ptr<Include> parseInclude();
 
 public:
-    Parser(Lexer &lexer);
-    std::vector<std::unique_ptr<ASTNode>> ast();
+    Parser(Compiler *compiler, std::string filename);
+    std::vector<std::unique_ptr<ASTNode>> parse();
 };
 
 #endif

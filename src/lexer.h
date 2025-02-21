@@ -22,6 +22,7 @@ enum TokenType
     TOKEN_KEYWORD_BOOL,
     TOKEN_KEYWORD_CHAR,
     TOKEN_KEYWORD_STRUCT,
+    TOKEN_KEYWORD_INCLUDE,
 
     // Arithmetic
     TOKEN_OPERATOR_PLUS,
@@ -59,6 +60,7 @@ enum TokenType
     TOKEN_IDENTIFIER,
 
     TOKEN_COMMA,
+    TOKEN_HASHTAG,
     TOKEN_SEMICOLON,
     TOKEN_DOT,
     TOKEN_COLON,
@@ -80,24 +82,29 @@ struct Token
     FilePosition position;
 };
 
-struct InputBuffer
+class InputBuffer
 {
-    std::string buffer;
+
+public:
+    InputBuffer();
+    InputBuffer(std::string filename);
+
     size_t position;
     FilePosition positionInFile;
-
     size_t size();
     char advance();
     char current();
     bool eof();
     void skipWhitespace();
     void skipComment();
+    std::string filename;
+    std::string buffer;
 };
 
 class Lexer
 {
 public:
-    Lexer(const std::string &text);
+    Lexer(std::string filename);
 
     Token next();
     Token peek();
@@ -106,9 +113,9 @@ public:
     static std::unordered_map<TokenType, std::string> tokenEnumToString;
     void dumpTokens();
 
-private:
     InputBuffer input;
 
+private:
     Token parseIdentOrKeyword();
     Token parseStringLiteral();
     Token parseInteger();

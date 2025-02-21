@@ -13,19 +13,15 @@ TARGET := bin/compiler
 
 $(shell mkdir -p bin)
 
-debug:
-	$(CXX) $(CXXFLAGS) -g -I$(LLVM_INCLUDE) $(SRC) -o $(GEN) $(LLVM_LIBS) $(LLVM_LDFLAGS) $(LLVM_SYSTEM_LIBS)
-	gdb ./$(GEN)
+run:
+	$(CXX) $(CXXFLAGS) -g -I$(LLVM_INCLUDE) $(SRC) -o $(GEN) $(LLVM_LIBS) $(LLVM_LDFLAGS) $(LLVM_SYSTEM_LIBS) -fsanitize=address
+	./$(GEN) examples/main.pl
 
-build:
-	$(CXX) $(CXXFLAGS) -I$(LLVM_INCLUDE) $(SRC) -o $(GEN) $(LLVM_LIBS) $(LLVM_LDFLAGS) $(LLVM_SYSTEM_LIBS)
-	./$(GEN)
-
-compile:
+compile-ir:
 	./$(GEN) > $(IR_TARGET)
 	clang -o $(TARGET) $(IR_TARGET)
 
-run:
+run-compiled:
 	./$(TARGET)
 	@echo "Exit Status: $$?"
 

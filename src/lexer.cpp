@@ -1,6 +1,27 @@
 #include <iostream>
 
 #include "lexer.h"
+#include <fstream>
+#include <sstream>
+
+std::string getContents(const char *filename)
+{
+    std::ifstream file(filename);
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    return buffer.str();
+}
+
+InputBuffer::InputBuffer() : position(0), positionInFile({1, 0}) {}
+
+InputBuffer::InputBuffer(std::string filename)
+{
+    std::string contents = getContents(filename.c_str());
+    buffer = contents;
+    position = 0;
+    positionInFile.row = 1;
+    positionInFile.col = 0;
+}
 
 size_t InputBuffer::size()
 {
@@ -61,10 +82,9 @@ bool InputBuffer::eof()
     return position >= buffer.size();
 }
 
-Lexer::Lexer(const std::string &text)
+Lexer::Lexer(std::string filename)
 {
-    input = InputBuffer{text, 0};
-    input.positionInFile = {1, 0};
+    input = InputBuffer(filename);
 }
 
 std::unordered_map<std::string, TokenType> Lexer::keywords = {
@@ -82,7 +102,8 @@ std::unordered_map<std::string, TokenType> Lexer::keywords = {
     {"int", TOKEN_KEYWORD_INT},
     {"bool", TOKEN_KEYWORD_BOOL},
     {"char", TOKEN_KEYWORD_CHAR},
-    {"struct", TOKEN_KEYWORD_STRUCT}};
+    {"struct", TOKEN_KEYWORD_STRUCT},
+    {"include", TOKEN_KEYWORD_INCLUDE}};
 
 std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_KEYWORD_FN, "TOKEN_KEYWORD_FN"},
@@ -100,6 +121,7 @@ std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_KEYWORD_BOOL, "TOKEN_KEYWORD_BOOL"},
     {TOKEN_KEYWORD_CHAR, "TOKEN_KEYWORD_CHAR"},
     {TOKEN_KEYWORD_STRUCT, "TOKEN_KEYWORD_STRUCT"},
+    {TOKEN_KEYWORD_INCLUDE, "TOKEN_KEYWORD_INCLUDE"},
     {TOKEN_OPERATOR_PLUS, "TOKEN_OPERATOR_PLUS"},
     {TOKEN_OPERATOR_MINUS, "TOKEN_OPERATOR_MINUS"},
     {TOKEN_OPERATOR_MUL, "TOKEN_OPERATOR_MUL"},
@@ -127,6 +149,7 @@ std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_LEFT_SQUARE_BRACKET, "TOKEN_LEFT_SQUARE_BRACKET"},
     {TOKEN_IDENTIFIER, "TOKEN_IDENTIFIER"},
     {TOKEN_COMMA, "TOKEN_COMMA"},
+    {TOKEN_HASHTAG, "TOKEN_HASHTAG"},
     {TOKEN_SEMICOLON, "TOKEN_SEMICOLON"},
     {TOKEN_DOT, "TOKEN_DOT"},
     {TOKEN_COLON, "TOKEN_COLON"},
@@ -136,6 +159,7 @@ std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
 
 void Lexer::dumpTokens()
 {
+    std::cout << "Tokens for file: " << input.filename << std::endl;
     Token token;
     do
     {
@@ -290,6 +314,9 @@ Token Lexer::next()
         case '.':
             input.advance();
             return {TOKEN_DOT, ".", position};
+        case '#':
+            input.advance();
+            return {TOKEN_HASHTAG, "#", position};
         case ':':
             input.advance();
             return {TOKEN_COLON, ":", position};

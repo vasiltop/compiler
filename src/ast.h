@@ -85,4 +85,12 @@ struct Variable : public ASTNode
     void display(int level) override;
 };
 
+struct Include : public ASTNode
+{
+    std::string filename;
+
+    Include(const std::string &filename);
+    void display(int level) override;
+};
+
 #endif
