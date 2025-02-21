@@ -14,7 +14,7 @@ std::string getContents(const char *filename)
 
 InputBuffer::InputBuffer() : position(0), positionInFile({1, 0}) {}
 
-InputBuffer::InputBuffer(std::string filename)
+InputBuffer::InputBuffer(std::string filename) : filename(filename)
 {
     std::string contents = getContents(filename.c_str());
     buffer = contents;
@@ -98,10 +98,7 @@ std::unordered_map<std::string, TokenType> Lexer::keywords = {
     {"true", TOKEN_BOOL_LITERAL},
     {"false", TOKEN_BOOL_LITERAL},
     {"null", TOKEN_KEYWORD_NULL},
-    {"string", TOKEN_KEYWORD_STRING},
-    {"int", TOKEN_KEYWORD_INT},
-    {"bool", TOKEN_KEYWORD_BOOL},
-    {"char", TOKEN_KEYWORD_CHAR},
+
     {"struct", TOKEN_KEYWORD_STRUCT},
     {"include", TOKEN_KEYWORD_INCLUDE}};
 
@@ -116,10 +113,7 @@ std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_KEYWORD_TRUE, "TOKEN_KEYWORD_TRUE"},
     {TOKEN_KEYWORD_FALSE, "TOKEN_KEYWORD_FALSE"},
     {TOKEN_KEYWORD_NULL, "TOKEN_KEYWORD_NULL"},
-    {TOKEN_KEYWORD_STRING, "TOKEN_KEYWORD_STRING"},
-    {TOKEN_KEYWORD_INT, "TOKEN_KEYWORD_INT"},
-    {TOKEN_KEYWORD_BOOL, "TOKEN_KEYWORD_BOOL"},
-    {TOKEN_KEYWORD_CHAR, "TOKEN_KEYWORD_CHAR"},
+
     {TOKEN_KEYWORD_STRUCT, "TOKEN_KEYWORD_STRUCT"},
     {TOKEN_KEYWORD_INCLUDE, "TOKEN_KEYWORD_INCLUDE"},
     {TOKEN_OPERATOR_PLUS, "TOKEN_OPERATOR_PLUS"},
@@ -167,6 +161,11 @@ void Lexer::dumpTokens()
         std::cout << "Token: " << tokenEnumToString[token.type] << " Value: " << token.value
                   << " Position: Row: " << token.position.row << " Column: " << token.position.col << std::endl;
     } while (token.type != TOKEN_EOF);
+
+    std::cout << std::endl;
+
+    input.position = 0;
+    input.positionInFile = {1, 0};
 }
 
 Token Lexer::next()

@@ -1,14 +1,22 @@
 #include <iostream>
 #include "parser.h"
 
+#define PANIC(message)                                                                                                \
+    do                                                                                                                \
+    {                                                                                                                 \
+        std::cerr << "PANIC at " << __FILE__ << ":" << __LINE__ << " (" << __func__ << "): " << message << std::endl; \
+        std::exit(EXIT_FAILURE);                                                                                      \
+    } while (0)
+
 #define EXPECT_TOKEN(tokenType, errorMessage)                                      \
     if (lexer.peek().type != tokenType)                                            \
     {                                                                              \
         std::cerr << lexer.input.filename << ":"                                   \
                   << lexer.peek().position.row << ":" << lexer.peek().position.col \
                   << ": error: " << errorMessage                                   \
+                  << " Received: " << lexer.peek().value                           \
                   << std::endl;                                                    \
-        return nullptr;                                                            \
+        PANIC("Unexpected token");                                                 \
     }
 
 int getPrecedence(TokenType type)
@@ -39,34 +47,61 @@ int getPrecedence(TokenType type)
     }
 }
 
-Parser::Parser(Compiler *compiler, std::string filename) : compiler(compiler), lexer(filename) {}
+Parser::Parser(Compiler *compiler, std::string filename) : compiler(compiler), lexer(filename)
+{
+    lexer.dumpTokens();
+}
 
 std::vector<std::unique_ptr<ASTNode>> Parser::parse()
 {
     std::vector<std::unique_ptr<ASTNode>> nodes;
     while (lexer.peek().type != TOKEN_EOF)
     {
-        switch (lexer.next().type)
-        {
-        case TOKEN_KEYWORD_FN:
-            nodes.push_back(parseFunctionDecl());
-            break;
-        case TOKEN_IDENTIFIER:
-            switch (lexer.peek().type)
-            {
-            case TOKEN_LEFT_PAREN:
-                nodes.push_back(parseFunctionCall());
-                break;
-            }
-            break;
-
-        case TOKEN_HASHTAG:
-            nodes.push_back(parseInclude());
-            break;
-        }
+        nodes.push_back(parseNext());
     }
 
     return nodes;
+}
+
+std::unique_ptr<ASTNode> Parser::parseNext()
+{
+    Token token = lexer.peek();
+    lexer.next();
+
+    switch (token.type)
+    {
+    case TOKEN_KEYWORD_FN:
+        return parseFunctionDecl();
+        break;
+    case TOKEN_KEYWORD_RETURN:
+        return parseReturn();
+        break;
+    case TOKEN_IDENTIFIER:
+        switch (lexer.peek().type)
+        {
+        case TOKEN_LEFT_PAREN:
+            return parseFunctionCall(token.value);
+            break;
+        }
+        break;
+
+    case TOKEN_HASHTAG:
+        return parseInclude();
+        break;
+    }
+
+    return nullptr;
+}
+
+std::unique_ptr<Return> Parser::parseReturn()
+{
+
+    auto expr = parseExpression(0);
+
+    EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
+    lexer.next();
+
+    return std::make_unique<Return>(std::move(expr));
 }
 
 std::unique_ptr<Include> Parser::parseInclude()
@@ -81,7 +116,7 @@ std::unique_ptr<Include> Parser::parseInclude()
     EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
     lexer.next();
 
-    compiler->parse(filename);
+    compiler->compile(filename);
 
     return std::make_unique<Include>(filename);
 }
@@ -96,17 +131,48 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
     EXPECT_TOKEN(TOKEN_LEFT_PAREN, "Expected '('");
     lexer.next();
 
-    // TODO: parse args
+    std::vector<std::unique_ptr<ASTNode>> args;
+    while (lexer.peek().type != TOKEN_RIGHT_PAREN)
+    {
+        if (lexer.peek().type == TOKEN_COMMA)
+        {
+            lexer.next();
+            continue;
+        }
+
+        EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier for argument");
+        std::string argName = lexer.peek().value;
+        lexer.next();
+
+        EXPECT_TOKEN(TOKEN_COLON, "Expected ':'");
+        lexer.next();
+
+        EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier type for argument");
+        Token type = lexer.peek();
+        lexer.next();
+
+        args.push_back(std::make_unique<TypedIdent>(type, argName));
+    }
 
     EXPECT_TOKEN(TOKEN_RIGHT_PAREN, "Expected ')'");
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_ARROW, "Expected '->'");
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier for return value");
+    Token returnType = lexer.peek();
     lexer.next();
 
     EXPECT_TOKEN(TOKEN_LEFT_BRACE, "Expected '{'");
     lexer.next();
 
-    auto funcDecl = std::make_unique<FunctionDecl>(funcName);
+    auto funcDecl = std::make_unique<FunctionDecl>(funcName, args, returnType);
 
-    funcDecl->body.push_back(parseFunctionCall()); // hard coded for now
+    while (lexer.peek().type != TOKEN_RIGHT_BRACE)
+    {
+        funcDecl->body.push_back(parseNext());
+    }
 
     EXPECT_TOKEN(TOKEN_RIGHT_BRACE, "Expected '}'");
     lexer.next();
@@ -115,12 +181,8 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
 }
 
 std::unique_ptr<FunctionCall>
-Parser::parseFunctionCall()
+Parser::parseFunctionCall(std::string name)
 {
-    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier");
-    std::string name = lexer.peek().value;
-    lexer.next();
-
     EXPECT_TOKEN(TOKEN_LEFT_PAREN, "Expected '('");
     lexer.next();
 
@@ -152,8 +214,7 @@ std::unique_ptr<ASTNode>
 Parser::parseExpression(int precedence = 0)
 {
     auto left = parseUnary();
-
-    while (true)
+    for (;;)
     {
         int currentPrecedence = getPrecedence(lexer.peek().type);
 
@@ -204,9 +265,8 @@ Parser::parsePrimary()
         switch (lexer.peek().type)
         {
         case TOKEN_LEFT_PAREN:
-            return parseFunctionCall();
+            return parseFunctionCall(name);
         default:
-            lexer.next();
             return std::make_unique<Variable>(name);
         }
     }

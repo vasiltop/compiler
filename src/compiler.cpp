@@ -10,18 +10,25 @@ Compiler::Compiler(int arg, char **argv)
     }
 
     char *filename = argv[1];
-    parse(filename);
+    compile(filename);
 }
 
-void Compiler::parse(const std::string &filename)
+void Compiler::compile(const std::string &filename)
 {
+    if (parsers.find(filename) != parsers.end())
+    {
+        return;
+    }
+
     Parser parser(this, filename);
     parsers.insert({filename, parser});
+
     auto ast = parser.parse();
+
+    std::cout << "AST for: " << filename << std::endl;
 
     for (auto &node : ast)
     {
-        std::cout << "AST for: " << filename << std::endl;
         node->display(0);
     }
 }

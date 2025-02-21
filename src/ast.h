@@ -18,9 +18,11 @@ struct ASTNode
 struct FunctionDecl : public ASTNode
 {
     std::string name;
+    std::vector<std::unique_ptr<ASTNode>> args;
+    Token returnType;
     std::vector<std::unique_ptr<ASTNode>> body;
 
-    FunctionDecl(const std::string name);
+    FunctionDecl(const std::string &name, std::vector<std::unique_ptr<ASTNode>> &args, Token &returnType);
     void display(int level) override;
 };
 
@@ -90,6 +92,23 @@ struct Include : public ASTNode
     std::string filename;
 
     Include(const std::string &filename);
+    void display(int level) override;
+};
+
+struct TypedIdent : public ASTNode
+{
+    Token type;
+    std::string name;
+
+    TypedIdent(const Token &type, const std::string &name);
+    void display(int level) override;
+};
+
+struct Return : public ASTNode
+{
+    std::unique_ptr<ASTNode> expr;
+
+    Return(std::unique_ptr<ASTNode> expr);
     void display(int level) override;
 };
 

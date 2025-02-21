@@ -9,7 +9,7 @@ class Compiler
 {
 public:
     Compiler(int arg, char **argv);
-    void parse(const std::string &filename);
+    void compile(const std::string &filename);
     size_t amountOfFiles();
 
 private:

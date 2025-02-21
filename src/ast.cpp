@@ -1,4 +1,5 @@
 #include "ast.h"
+
 #include <iostream>
 
 #include "llvm/IR/LLVMContext.h"
@@ -11,11 +12,18 @@ static void displayStringAtIndent(int indent, const std::string &str)
     std::cout << indentStr << str << std::endl;
 }
 
-FunctionDecl::FunctionDecl(const std::string name) : name(name) {}
+FunctionDecl::FunctionDecl(const std::string &name, std::vector<std::unique_ptr<ASTNode>> &args, Token &returnType) : name(name), args(std::move(args)), returnType(returnType) {}
 
 void FunctionDecl::display(int level)
 {
     displayStringAtIndent(level, "FunctionDecl: " + name);
+
+    for (auto &arg : args)
+    {
+        arg->display(level + 1);
+    }
+
+    displayStringAtIndent(level, "Return Type: " + returnType.value);
 
     for (auto &node : body)
     {
@@ -86,4 +94,19 @@ Include::Include(const std::string &filename) : filename(filename) {}
 void Include::display(int level)
 {
     displayStringAtIndent(level, "Include: " + filename);
+}
+
+TypedIdent::TypedIdent(const Token &type, const std::string &name) : name(name), type(type) {}
+
+void TypedIdent::display(int level)
+{
+    displayStringAtIndent(level, "TypedIdent: " + name + " Type: " + type.value);
+}
+
+Return::Return(std::unique_ptr<ASTNode> expr) : expr(std::move(expr)) {}
+
+void Return::display(int level)
+{
+    displayStringAtIndent(level, "Return:");
+    expr->display(level + 1);
 }

@@ -1,5 +1,7 @@
 #include "examples/other.pl";
 
-fn main() {
-	printf("hello world\n");
+fn main() -> int {
+	returnBoolean(true, false);
+
+	return 0;
 }

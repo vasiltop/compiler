@@ -19,12 +19,14 @@ private:
 
     std::string file_name;
 
-    std::unique_ptr<FunctionCall> parseFunctionCall();
+    std::unique_ptr<FunctionCall> parseFunctionCall(std::string name);
     std::unique_ptr<FunctionDecl> parseFunctionDecl();
+    std::unique_ptr<Return> parseReturn();
     std::unique_ptr<ASTNode> parseExpression(int precedence);
     std::unique_ptr<ASTNode> parsePrimary();
     std::unique_ptr<ASTNode> parseUnary();
     std::unique_ptr<Include> parseInclude();
+    std::unique_ptr<ASTNode> parseNext();
 
 public:
     Parser(Compiler *compiler, std::string filename);
