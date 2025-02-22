@@ -1,5 +1,3 @@
-fn returnBoolean(data: bool, data2: bool, data3: int) -> bool {
-	printf("hello world: %d\n", data3);
-
-    return data || data2;
+fn foo(a: i32, b: i32) -> i32 {
+	return a * b;
 }

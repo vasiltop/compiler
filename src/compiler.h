@@ -2,6 +2,9 @@
 #define COMPILER_H
 
 #include "parser.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
 
 class Parser;
 
@@ -14,6 +17,9 @@ public:
 
 private:
     std::unordered_map<std::string, Parser> parsers;
+    std::unique_ptr<llvm::LLVMContext> context;
+    std::unique_ptr<llvm::IRBuilder<>> builder;
+    std::unique_ptr<llvm::Module> module;
 };
 
 #endif

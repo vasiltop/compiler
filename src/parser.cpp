@@ -186,15 +186,25 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
     Token returnType = lexer.peek();
     lexer.next();
 
+    if (lexer.peek().type == TOKEN_SEMICOLON)
+    {
+        lexer.next();
+        return std::make_unique<FunctionDecl>(funcName, args, returnType);
+    }
+
     EXPECT_TOKEN(TOKEN_LEFT_BRACE, "Expected '{'");
     lexer.next();
 
     auto funcDecl = std::make_unique<FunctionDecl>(funcName, args, returnType);
 
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> body = std::vector<std::unique_ptr<ASTNode>>();
+
     while (lexer.peek().type != TOKEN_RIGHT_BRACE)
     {
-        funcDecl->body.push_back(parseNext());
+        body.value().push_back(parseNext());
     }
+
+    funcDecl->body = std::move(body);
 
     EXPECT_TOKEN(TOKEN_RIGHT_BRACE, "Expected '}'");
     lexer.next();

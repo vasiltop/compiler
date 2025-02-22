@@ -110,7 +110,7 @@ struct FunctionDecl : public ASTNode
     std::string name;
     std::vector<std::unique_ptr<TypedIdent>> args;
     Token returnType;
-    std::vector<std::unique_ptr<ASTNode>> body;
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> body;
 
     FunctionDecl(const std::string &name, std::vector<std::unique_ptr<TypedIdent>> &args, Token &returnType);
     llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;

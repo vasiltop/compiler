@@ -10,7 +10,14 @@ Compiler::Compiler(int arg, char **argv)
     }
 
     char *filename = argv[1];
+
+    context = std::make_unique<llvm::LLVMContext>();
+    builder = std::make_unique<llvm::IRBuilder<>>(*context);
+    module = std::make_unique<llvm::Module>("main", *context);
+
     compile(filename);
+
+    module->print(llvm::outs(), nullptr);
 }
 
 void Compiler::compile(const std::string &filename)
@@ -26,23 +33,18 @@ void Compiler::compile(const std::string &filename)
     auto ast = parser.parse();
 
     /*
+    std::cout << "AST for " << filename << std::endl;
     for (auto &node : ast)
     {
         node->display(0);
     }
-
+    std::cout << std::endl;
     */
-    llvm::LLVMContext context;
-    llvm::IRBuilder<> builder(context);
-    auto module = std::make_unique<llvm::Module>(filename, context);
-    (*module).setSourceFileName(filename);
 
     for (auto &node : ast)
     {
-        node->codegen(builder, *module, parser);
+        node->codegen(*builder, *module, parser);
     }
-
-    module->print(llvm::outs(), nullptr);
 }
 
 size_t Compiler::amountOfFiles()

@@ -8,7 +8,7 @@
 
 static llvm::Type *getLLVMType(llvm::LLVMContext &context, const Token &type)
 {
-    if (type.value == "int")
+    if (type.value == "i32")
     {
         return llvm::Type::getInt32Ty(context);
     }
@@ -44,23 +44,26 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
 
     llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, &module);
 
-    llvm::BasicBlock *entry = llvm::BasicBlock::Create(module.getContext(), "entry", func);
-    builder.SetInsertPoint(entry);
-
-    unsigned i = 0;
-    for (auto &arg : func->args())
+    if (body)
     {
-        llvm::AllocaInst *alloc = builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
-        builder.CreateStore(&arg, alloc);
-        arg.setName(args[i++]->name);
-        parser.addVariable(arg.getName().str(), alloc, arg.getType());
-    }
 
-    for (auto &node : body)
-    {
-        node->codegen(builder, module, parser);
-    }
+        llvm::BasicBlock *entry = llvm::BasicBlock::Create(module.getContext(), "entry", func);
+        builder.SetInsertPoint(entry);
 
+        unsigned i = 0;
+        for (auto &arg : func->args())
+        {
+            llvm::AllocaInst *alloc = builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
+            builder.CreateStore(&arg, alloc);
+            arg.setName(args[i++]->name);
+            parser.addVariable(arg.getName().str(), alloc, arg.getType());
+        }
+
+        for (auto &node : body.value())
+        {
+            node->codegen(builder, module, parser);
+        }
+    }
     return func;
 }
 
@@ -75,9 +78,12 @@ void FunctionDecl::display(int level)
 
     displayStringAtIndent(level, "Return Type: " + returnType.value);
 
-    for (auto &node : body)
+    if (body)
     {
-        node->display(level + 1);
+        for (auto &node : body.value())
+        {
+            node->display(level + 1);
+        }
     }
 }
 
