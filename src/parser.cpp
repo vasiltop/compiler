@@ -106,12 +106,52 @@ std::unique_ptr<ASTNode> Parser::parseNext()
 
     case TOKEN_HASHTAG:
         return parseInclude();
-
     case TOKEN_KEYWORD_LET:
         return parseVariableDeclaration();
+    case TOKEN_KEYWORD_IF:
+        return parseCondition();
     }
 
     return nullptr;
+}
+
+std::unique_ptr<Condition> Parser::parseCondition()
+{
+
+    auto condition = parseExpression(0);
+
+    EXPECT_TOKEN(TOKEN_LEFT_BRACE, "Expected '{'");
+    lexer.next();
+
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> body = std::vector<std::unique_ptr<ASTNode>>();
+
+    while (lexer.peek().type != TOKEN_RIGHT_BRACE)
+    {
+        body.value().push_back(parseNext());
+    }
+
+    EXPECT_TOKEN(TOKEN_RIGHT_BRACE, "Expected '}'");
+    lexer.next();
+
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> elseBody = std::vector<std::unique_ptr<ASTNode>>();
+
+    if (lexer.peek().type == TOKEN_KEYWORD_ELSE)
+    {
+        lexer.next();
+
+        EXPECT_TOKEN(TOKEN_LEFT_BRACE, "Expected '{'");
+        lexer.next();
+
+        while (lexer.peek().type != TOKEN_RIGHT_BRACE)
+        {
+            elseBody.value().push_back(parseNext());
+        }
+
+        EXPECT_TOKEN(TOKEN_RIGHT_BRACE, "Expected '}'");
+        lexer.next();
+    }
+
+    return std::make_unique<Condition>(std::move(condition), std::move(body), std::move(elseBody));
 }
 
 std::unique_ptr<Reassign> Parser::parseReassign(std::string name)

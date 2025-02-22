@@ -1,12 +1,15 @@
-fn printf(s: i8^) -> i32;
-fn malloc(size: i32) -> i8^;
-// a
+fn printf(s: u8^) -> i32;
 
 fn main() -> i32 {
-	let a: u8^ = malloc(8);
-	printf("Old Pointer: %d\n", a^);
-	a^ = 1;
-	printf("New Pointer: %d\n", a^);
+
+	let b: bool = true;
+	let a: bool = false;
+
+	if b && a {
+		printf("true\n");
+	} else {
+		printf("false\n");
+	}
 
 	return 0;
 }

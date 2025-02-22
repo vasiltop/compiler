@@ -425,3 +425,73 @@ void Reassign::display(int level)
     var->display(level + 1);
     expr->display(level + 1);
 }
+
+Condition::Condition(
+    std::unique_ptr<ASTNode> condition,
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> body,
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> elseBody)
+    : condition(std::move(condition)), body(std::move(body)), elseBody(std::move(elseBody)) {}
+
+llvm::Value *Condition::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    // Generate the condition value
+    llvm::Value *cond = condition->codegen(builder, module, parser);
+
+    if (!cond)
+    {
+        return nullptr;
+    }
+
+    llvm::Function *func = builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock *thenBlock = llvm::BasicBlock::Create(module.getContext(), "then", func);
+    llvm::BasicBlock *elseBlock = llvm::BasicBlock::Create(module.getContext(), "else", func);
+    llvm::BasicBlock *mergeBlock = llvm::BasicBlock::Create(module.getContext(), "ifcont", func);
+
+    builder.CreateCondBr(cond, thenBlock, elseBlock);
+
+    builder.SetInsertPoint(thenBlock);
+    for (auto &node : body.value())
+    {
+        node->codegen(builder, module, parser);
+    }
+    builder.CreateBr(mergeBlock);
+
+    builder.SetInsertPoint(elseBlock);
+    if (elseBody)
+    {
+        for (auto &node : elseBody.value())
+        {
+            node->codegen(builder, module, parser);
+        }
+    }
+    builder.CreateBr(mergeBlock);
+
+    builder.SetInsertPoint(mergeBlock);
+
+    return nullptr;
+}
+
+void Condition::display(int level)
+{
+    displayStringAtIndent(level, "Condition:");
+    condition->display(level + 1);
+
+    if (body)
+    {
+        displayStringAtIndent(level + 1, "Body:");
+        for (auto &node : body.value())
+        {
+            node->display(level + 2);
+        }
+    }
+
+    if (elseBody)
+    {
+        displayStringAtIndent(level + 1, "Else Body:");
+        for (auto &node : elseBody.value())
+        {
+            node->display(level + 2);
+        }
+    }
+}

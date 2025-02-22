@@ -17,6 +17,7 @@ class Return;
 class Include;
 class Type;
 class Reassign;
+class Condition;
 
 int getPrecedence(TokenType token);
 
@@ -47,6 +48,7 @@ private:
     std::unique_ptr<ASTNode> parseNext();
     std::unique_ptr<Type> parseType();
     std::unique_ptr<Reassign> parseReassign(std::string name);
+    std::unique_ptr<Condition> parseCondition();
 
     std::unordered_map<std::string, std::pair<llvm::Value *, ParserType>> symbolTable;
 

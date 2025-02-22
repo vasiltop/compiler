@@ -158,4 +158,15 @@ struct Reassign : public ASTNode
     void display(int level) override;
 };
 
+struct Condition : public ASTNode
+{
+    std::unique_ptr<ASTNode> condition;
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> body;
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> elseBody;
+
+    Condition(std::unique_ptr<ASTNode> condition, std::optional<std::vector<std::unique_ptr<ASTNode>>> body, std::optional<std::vector<std::unique_ptr<ASTNode>>> elseBody);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
 #endif

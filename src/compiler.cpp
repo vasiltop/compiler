@@ -38,8 +38,7 @@ void Compiler::compile(const std::string &filename)
         node->display(0);
     }
     std::cout << std::endl;
-    */
-
+*/
     for (auto &node : ast)
     {
         node->codegen(*builder, *module, parser);
