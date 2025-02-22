@@ -19,6 +19,10 @@ static llvm::Type *getLLVMType(llvm::LLVMContext &context, const Type &type)
     {
         t = llvm::Type::getInt8Ty(context);
     }
+    else if (stringType == "u8")
+    {
+        t = llvm::Type::getInt8Ty(context);
+    }
     else if (stringType == "bool")
     {
         t = llvm::Type::getInt1Ty(context);
@@ -354,4 +358,32 @@ llvm::Value *Type::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Par
 void Type::display(int level)
 {
     displayStringAtIndent(level, "Type: " + type.value + " Pointer Level: " + std::to_string(pointerLevel));
+}
+
+Reassign::Reassign(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> expr) : var(std::move(var)), expr(std::move(expr)) {}
+llvm::Value *Reassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    llvm::Value *val = expr->codegen(builder, module, parser);
+
+    if (!val)
+    {
+        return nullptr;
+    }
+
+    auto var = parser.getVariable(this->var->name);
+
+    if (!var.first)
+    {
+        std::cerr << "Error: Unknown variable '" << this->var->name << "'." << std::endl;
+        return nullptr;
+    }
+
+    return builder.CreateStore(val, var.first);
+}
+
+void Reassign::display(int level)
+{
+    displayStringAtIndent(level, "Reassign:");
+    var->display(level + 1);
+    expr->display(level + 1);
 }

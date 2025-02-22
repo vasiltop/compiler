@@ -97,6 +97,9 @@ std::unique_ptr<ASTNode> Parser::parseNext()
         case TOKEN_LEFT_PAREN:
             return parseFunctionCall(token.value, true);
             break;
+        case TOKEN_OPERATOR_ASSIGN:
+            return parseReassign(token.value);
+            break;
         }
         break;
 
@@ -109,6 +112,20 @@ std::unique_ptr<ASTNode> Parser::parseNext()
     }
 
     return nullptr;
+}
+
+std::unique_ptr<Reassign> Parser::parseReassign(std::string name)
+{
+
+    EXPECT_TOKEN(TOKEN_OPERATOR_ASSIGN, "Expected '='");
+    lexer.next();
+
+    auto expr = parseExpression(0);
+
+    EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
+    lexer.next();
+
+    return std::make_unique<Reassign>(std::make_unique<Variable>(name), std::move(expr));
 }
 
 std::unique_ptr<VariableDeclaration> Parser::parseVariableDeclaration()

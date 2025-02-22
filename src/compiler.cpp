@@ -1,9 +1,9 @@
 #include "compiler.h"
 #include <iostream>
 
-Compiler::Compiler(int arg, char **argv)
+Compiler::Compiler(int argc, char **argv)
 {
-    if (arg < 2)
+    if (argc < 2)
     {
         std::cerr << "Usage: " << argv[0] << " <filename>" << std::endl;
         exit(1);
@@ -16,7 +16,6 @@ Compiler::Compiler(int arg, char **argv)
     module = std::make_unique<llvm::Module>("main", *context);
 
     compile(filename);
-
     module->print(llvm::outs(), nullptr);
 }
 

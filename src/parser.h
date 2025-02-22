@@ -16,6 +16,7 @@ class TypedIdent;
 class Return;
 class Include;
 class Type;
+class Reassign;
 
 int getPrecedence(TokenType token);
 
@@ -38,6 +39,7 @@ private:
     std::unique_ptr<Include> parseInclude();
     std::unique_ptr<ASTNode> parseNext();
     std::unique_ptr<Type> parseType();
+    std::unique_ptr<Reassign> parseReassign(std::string name);
 
     std::unordered_map<std::string, std::pair<llvm::Value *, llvm::Type *>> symbolTable;
 

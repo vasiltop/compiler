@@ -1,11 +1,11 @@
 fn printf(s: i8^) -> i32;
 fn malloc(size: i32) -> i8^;
 // a
+
 fn main() -> i32 {
-	let str: i8^ = "test\n";
-	let a: i32 = 5;
-	let b: bool = true;
-	printf("Hello: %d, bool: %d\n", a, b);
+	let a: i32 = 5; 
+	a = a + 1;
+	printf("Hello: %d\n", a);
 
 	return 0;
 }

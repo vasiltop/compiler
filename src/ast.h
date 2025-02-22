@@ -146,4 +146,14 @@ struct VariableDeclaration : public ASTNode
     void display(int level) override;
 };
 
+struct Reassign : public ASTNode
+{
+    std::unique_ptr<Variable> var;
+    std::unique_ptr<ASTNode> expr;
+
+    Reassign(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> expr);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
 #endif
