@@ -19,7 +19,7 @@ private:
 
     std::string file_name;
 
-    std::unique_ptr<FunctionCall> parseFunctionCall(std::string name);
+    std::unique_ptr<FunctionCall> parseFunctionCall(std::string name, bool consumeSemicolon);
     std::unique_ptr<FunctionDecl> parseFunctionDecl();
     std::unique_ptr<VariableDeclaration> parseVariableDeclaration();
     std::unique_ptr<TypedIdent> parseTypedIdent();

@@ -67,7 +67,6 @@ struct BinaryExpr : public ASTNode
 
     BinaryExpr(Token op, std::unique_ptr<ASTNode> lhs, std::unique_ptr<ASTNode> rhs);
     void display(int level) override;
-    void displayInner(int level);
 };
 
 struct UnaryExpr : public ASTNode

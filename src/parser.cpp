@@ -80,7 +80,7 @@ std::unique_ptr<ASTNode> Parser::parseNext()
         switch (lexer.peek().type)
         {
         case TOKEN_LEFT_PAREN:
-            return parseFunctionCall(token.value);
+            return parseFunctionCall(token.value, true);
             break;
         }
         break;
@@ -205,7 +205,7 @@ std::unique_ptr<TypedIdent> Parser::parseTypedIdent()
 }
 
 std::unique_ptr<FunctionCall>
-Parser::parseFunctionCall(std::string name)
+Parser::parseFunctionCall(std::string name, bool consumeSemicolon)
 {
     EXPECT_TOKEN(TOKEN_LEFT_PAREN, "Expected '('");
     lexer.next();
@@ -225,8 +225,9 @@ Parser::parseFunctionCall(std::string name)
     EXPECT_TOKEN(TOKEN_RIGHT_PAREN, "Expected ')'");
     lexer.next();
 
-    if (lexer.peek().type == TOKEN_SEMICOLON)
+    if (consumeSemicolon)
     {
+        EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
         lexer.next();
     }
 
@@ -289,7 +290,7 @@ Parser::parsePrimary()
         switch (lexer.peek().type)
         {
         case TOKEN_LEFT_PAREN:
-            return parseFunctionCall(name);
+            return parseFunctionCall(name, false);
         default:
             return std::make_unique<Variable>(name);
         }
