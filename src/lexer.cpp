@@ -176,6 +176,11 @@ Token Lexer::next()
         input.skipWhitespace();
         input.skipComment();
 
+        if (input.eof())
+        {
+            return {TOKEN_EOF, "EOF", input.positionInFile};
+        }
+
         char currentChar = input.current();
 
         if (std::isalpha(currentChar))
@@ -265,7 +270,7 @@ Token Lexer::next()
                 input.advance();
                 return {TOKEN_OPERATOR_AND, "&&", position};
             }
-            return {TOKEN_UNKNOWN, "&", position};
+            return {TOKEN_UNKNOWN, "&", position}; // TODO: ref
         case '|':
             input.advance();
             if (input.current() == '|')

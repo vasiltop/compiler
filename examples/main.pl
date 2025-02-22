@@ -1,10 +1,7 @@
-#include "examples/other.pl";
+fn foo(a: int, b: int) -> int {
+	return a * b;
+}
 
 fn main() -> int {
-	let a: int = 5;
-	let b: bool = false;
-	let c: bool = true;
-
-	return returnBoolean(true, b && c, a);
-
-}
+	return foo(5, 6) + 1;
+}  

@@ -10,19 +10,5 @@
 
 int main(int argc, char **argv)
 {
-
 	Compiler compiler(argc, argv);
-
-	/*
-llvm::LLVMContext context;
-llvm::IRBuilder<> builder(context);
-auto module = std::make_unique<llvm::Module>("my_module", context);
-
-for (auto &node : ast)
-{
-	node->codegen(builder, context, *module);
-}
-
-module->print(llvm::outs(), nullptr);
-*/
 }

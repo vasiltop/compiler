@@ -25,12 +25,24 @@ void Compiler::compile(const std::string &filename)
 
     auto ast = parser.parse();
 
-    std::cout << "AST for: " << filename << std::endl;
-
+    /*
     for (auto &node : ast)
     {
         node->display(0);
     }
+
+    */
+    llvm::LLVMContext context;
+    llvm::IRBuilder<> builder(context);
+    auto module = std::make_unique<llvm::Module>(filename, context);
+    (*module).setSourceFileName(filename);
+
+    for (auto &node : ast)
+    {
+        node->codegen(builder, *module, parser);
+    }
+
+    module->print(llvm::outs(), nullptr);
 }
 
 size_t Compiler::amountOfFiles()

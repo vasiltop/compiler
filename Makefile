@@ -18,7 +18,7 @@ run:
 	./$(GEN) examples/main.pl
 
 compile-ir:
-	./$(GEN) > $(IR_TARGET)
+	./$(GEN) examples/main.pl > $(IR_TARGET)
 	clang -o $(TARGET) $(IR_TARGET)
 	./$(TARGET)
 

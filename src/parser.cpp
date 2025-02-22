@@ -49,7 +49,22 @@ int getPrecedence(TokenType type)
 
 Parser::Parser(Compiler *compiler, std::string filename) : compiler(compiler), lexer(filename)
 {
-    lexer.dumpTokens();
+    // lexer.dumpTokens();
+}
+
+void Parser::addVariable(const std::string &name, llvm::Value *value, llvm::Type *type)
+{
+    symbolTable[name] = {value, type};
+}
+
+std::pair<llvm::Value *, llvm::Type *> Parser::getVariable(const std::string &name)
+{
+    auto it = symbolTable.find(name);
+    if (it != symbolTable.end())
+    {
+        return it->second;
+    }
+    return {nullptr, nullptr};
 }
 
 std::vector<std::unique_ptr<ASTNode>> Parser::parse()
@@ -149,7 +164,7 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
     EXPECT_TOKEN(TOKEN_LEFT_PAREN, "Expected '('");
     lexer.next();
 
-    std::vector<std::unique_ptr<ASTNode>> args;
+    std::vector<std::unique_ptr<TypedIdent>> args;
     while (lexer.peek().type != TOKEN_RIGHT_PAREN)
     {
         if (lexer.peek().type == TOKEN_COMMA)
