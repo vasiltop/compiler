@@ -74,6 +74,7 @@ void InputBuffer::skipComment()
         {
             advance();
         }
+        skipWhitespace();
     }
 }
 
@@ -145,6 +146,7 @@ std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_COMMA, "TOKEN_COMMA"},
     {TOKEN_HASHTAG, "TOKEN_HASHTAG"},
     {TOKEN_SEMICOLON, "TOKEN_SEMICOLON"},
+    {TOKEN_POINTER, "TOKEN_POINTER"},
     {TOKEN_DOT, "TOKEN_DOT"},
     {TOKEN_COLON, "TOKEN_COLON"},
     {TOKEN_ARROW, "TOKEN_ARROW"},
@@ -312,6 +314,9 @@ Token Lexer::next()
         case ';':
             input.advance();
             return {TOKEN_SEMICOLON, ";", position};
+        case '^':
+            input.advance();
+            return {TOKEN_POINTER, "^", position};
         case ',':
             input.advance();
             return {TOKEN_COMMA, ",", position};

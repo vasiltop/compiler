@@ -1,11 +1,11 @@
-#include "examples/other.pl";
-
-fn printf(s: *i8) -> i32;
-
-fn divide(a: i32, b: i32) -> i32 {
-	return a / b;
-}
-
+fn printf(s: i8^) -> i32;
+fn malloc(size: i32) -> i8^;
+// a
 fn main() -> i32 {
-	return foo(10, 6);
+	let str: i8^ = "test\n";
+	let a: i32 = 5;
+	let b: bool = true;
+	printf("Hello: %d, bool: %d\n", a, b);
+
+	return 0;
 }

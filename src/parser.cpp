@@ -182,20 +182,17 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
     EXPECT_TOKEN(TOKEN_ARROW, "Expected '->'");
     lexer.next();
 
-    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier for return value");
-    Token returnType = lexer.peek();
-    lexer.next();
+    auto returnType = parseType();
+    auto funcDecl = std::make_unique<FunctionDecl>(funcName, args, std::move(returnType));
 
     if (lexer.peek().type == TOKEN_SEMICOLON)
     {
         lexer.next();
-        return std::make_unique<FunctionDecl>(funcName, args, returnType);
+        return funcDecl;
     }
 
     EXPECT_TOKEN(TOKEN_LEFT_BRACE, "Expected '{'");
     lexer.next();
-
-    auto funcDecl = std::make_unique<FunctionDecl>(funcName, args, returnType);
 
     std::optional<std::vector<std::unique_ptr<ASTNode>>> body = std::vector<std::unique_ptr<ASTNode>>();
 
@@ -212,6 +209,22 @@ std::unique_ptr<FunctionDecl> Parser::parseFunctionDecl()
     return funcDecl;
 }
 
+std::unique_ptr<Type> Parser::parseType()
+{
+    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier for type");
+    Token type = lexer.peek();
+    lexer.next();
+    int pl = 0;
+
+    while (lexer.peek().type == TOKEN_POINTER)
+    {
+        pl++;
+        lexer.next();
+    }
+
+    return std::make_unique<Type>(type, pl);
+}
+
 std::unique_ptr<TypedIdent> Parser::parseTypedIdent()
 {
 
@@ -222,11 +235,9 @@ std::unique_ptr<TypedIdent> Parser::parseTypedIdent()
     EXPECT_TOKEN(TOKEN_COLON, "Expected ':'");
     lexer.next();
 
-    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier type for argument");
-    Token type = lexer.peek();
-    lexer.next();
+    auto type = parseType();
 
-    return std::make_unique<TypedIdent>(type, name);
+    return std::make_unique<TypedIdent>(std::move(type), name);
 }
 
 std::unique_ptr<FunctionCall>

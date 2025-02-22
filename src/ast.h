@@ -19,6 +19,16 @@ struct ASTNode
     virtual void display(int level) = 0;
 };
 
+struct Type : public ASTNode
+{
+    Token type;
+    int pointerLevel;
+
+    Type(Token type, int pointerLevel);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
 struct FunctionCall : public ASTNode
 {
     std::string name;
@@ -97,10 +107,10 @@ struct Include : public ASTNode
 
 struct TypedIdent : public ASTNode
 {
-    Token type;
+    Type type;
     std::string name;
 
-    TypedIdent(const Token &type, const std::string &name);
+    TypedIdent(std::unique_ptr<Type> type, const std::string &name);
     llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
     void display(int level) override;
 };
@@ -109,10 +119,10 @@ struct FunctionDecl : public ASTNode
 {
     std::string name;
     std::vector<std::unique_ptr<TypedIdent>> args;
-    Token returnType;
+    Type returnType;
     std::optional<std::vector<std::unique_ptr<ASTNode>>> body;
 
-    FunctionDecl(const std::string &name, std::vector<std::unique_ptr<TypedIdent>> &args, Token &returnType);
+    FunctionDecl(const std::string &name, std::vector<std::unique_ptr<TypedIdent>> &args, std::unique_ptr<Type> returnType);
     llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
     void display(int level) override;
 };

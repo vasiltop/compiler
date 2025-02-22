@@ -6,18 +6,38 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
 
-static llvm::Type *getLLVMType(llvm::LLVMContext &context, const Token &type)
+static llvm::Type *getLLVMType(llvm::LLVMContext &context, const Type &type)
 {
-    if (type.value == "i32")
+    std::string stringType = type.type.value;
+    llvm::Type *t = nullptr;
+
+    if (stringType == "i32")
     {
-        return llvm::Type::getInt32Ty(context);
+        t = llvm::Type::getInt32Ty(context);
     }
-    else if (type.value == "bool")
+    else if (stringType == "i8")
     {
-        return llvm::Type::getInt1Ty(context);
+        t = llvm::Type::getInt8Ty(context);
+    }
+    else if (stringType == "bool")
+    {
+        t = llvm::Type::getInt1Ty(context);
+    }
+    else if (stringType == "void")
+    {
+        t = llvm::Type::getVoidTy(context);
+    }
+    else
+    {
+        std::cerr << "Unknown type: " << stringType << std::endl;
     }
 
-    return llvm::Type::getVoidTy(context);
+    for (int i = 0; i < type.pointerLevel; i++)
+    {
+        t = llvm::PointerType::get(t, 0);
+    }
+
+    return t;
 }
 
 static void displayStringAtIndent(int indent, const std::string &str)
@@ -26,7 +46,7 @@ static void displayStringAtIndent(int indent, const std::string &str)
     std::cout << indentStr << str << std::endl;
 }
 
-FunctionDecl::FunctionDecl(const std::string &name, std::vector<std::unique_ptr<TypedIdent>> &args, Token &returnType) : name(name), args(std::move(args)), returnType(returnType) {}
+FunctionDecl::FunctionDecl(const std::string &name, std::vector<std::unique_ptr<TypedIdent>> &args, std::unique_ptr<Type> returnType) : name(name), args(std::move(args)), returnType(returnType->type, returnType->pointerLevel) {}
 
 llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
 {
@@ -76,7 +96,7 @@ void FunctionDecl::display(int level)
         arg->display(level + 1);
     }
 
-    displayStringAtIndent(level, "Return Type: " + returnType.value);
+    returnType.display(level + 1);
 
     if (body)
     {
@@ -96,12 +116,6 @@ llvm::Value *FunctionCall::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
     if (!func)
     {
         std::cerr << "Unknown function: " << name << std::endl;
-        return nullptr;
-    }
-
-    if (func->arg_size() != args.size())
-    {
-        std::cerr << "Incorrect number of arguments for function: " << name << std::endl;
         return nullptr;
     }
 
@@ -272,7 +286,7 @@ void Include::display(int level)
     displayStringAtIndent(level, "Include: " + filename);
 }
 
-TypedIdent::TypedIdent(const Token &type, const std::string &name) : name(name), type(type) {}
+TypedIdent::TypedIdent(std::unique_ptr<Type> type, const std::string &name) : name(name), type(type->type, type->pointerLevel) {}
 
 llvm::Value *TypedIdent::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
 {
@@ -281,7 +295,8 @@ llvm::Value *TypedIdent::codegen(llvm::IRBuilder<> &builder, llvm::Module &modul
 
 void TypedIdent::display(int level)
 {
-    displayStringAtIndent(level, "TypedIdent: " + name + " Type: " + type.value);
+    displayStringAtIndent(level, "TypedIdent: " + name);
+    type.display(level + 1);
 }
 
 Return::Return(std::unique_ptr<ASTNode> expr) : expr(std::move(expr)) {}
@@ -327,4 +342,16 @@ void VariableDeclaration::display(int level)
     displayStringAtIndent(level, "VariableDeclaration:");
     ident->display(level + 1);
     expr->display(level + 1);
+}
+
+Type::Type(Token type, int pointerLevel) : type(type), pointerLevel(pointerLevel) {}
+
+llvm::Value *Type::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    return nullptr; // not used
+}
+
+void Type::display(int level)
+{
+    displayStringAtIndent(level, "Type: " + type.value + " Pointer Level: " + std::to_string(pointerLevel));
 }
