@@ -20,6 +20,13 @@ class Reassign;
 
 int getPrecedence(TokenType token);
 
+struct ParserType
+{
+    llvm::Type *type;
+    llvm::Type *pointerType;
+    int pointerLevel;
+};
+
 class Parser
 {
 private:
@@ -41,14 +48,14 @@ private:
     std::unique_ptr<Type> parseType();
     std::unique_ptr<Reassign> parseReassign(std::string name);
 
-    std::unordered_map<std::string, std::pair<llvm::Value *, llvm::Type *>> symbolTable;
+    std::unordered_map<std::string, std::pair<llvm::Value *, ParserType>> symbolTable;
 
 public:
     Parser(Compiler *compiler, std::string filename);
     std::vector<std::unique_ptr<ASTNode>> parse();
 
-    void addVariable(const std::string &name, llvm::Value *value, llvm::Type *type);
-    std::pair<llvm::Value *, llvm::Type *> getVariable(const std::string &name);
+    void addVariable(const std::string &name, llvm::Value *value, ParserType type);
+    std::pair<llvm::Value *, ParserType> getVariable(const std::string &name);
 };
 
 #endif

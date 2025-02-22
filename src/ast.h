@@ -90,8 +90,9 @@ struct UnaryExpr : public ASTNode
 struct Variable : public ASTNode
 {
     std::string name;
+    int derefCount;
 
-    Variable(const std::string &name);
+    Variable(const std::string &name, int derefCount);
     llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
     void display(int level) override;
 };
@@ -150,8 +151,9 @@ struct Reassign : public ASTNode
 {
     std::unique_ptr<Variable> var;
     std::unique_ptr<ASTNode> expr;
+    int derefCount;
 
-    Reassign(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> expr);
+    Reassign(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> expr, int derefCount);
     llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
     void display(int level) override;
 };

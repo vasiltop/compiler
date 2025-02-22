@@ -52,19 +52,19 @@ Parser::Parser(Compiler *compiler, std::string filename) : compiler(compiler), l
     // lexer.dumpTokens();
 }
 
-void Parser::addVariable(const std::string &name, llvm::Value *value, llvm::Type *type)
+void Parser::addVariable(const std::string &name, llvm::Value *value, ParserType type)
 {
-    symbolTable[name] = {value, type};
+    symbolTable.insert({name, {value, type}});
 }
 
-std::pair<llvm::Value *, llvm::Type *> Parser::getVariable(const std::string &name)
+std::pair<llvm::Value *, ParserType> Parser::getVariable(const std::string &name)
 {
-    auto it = symbolTable.find(name);
-    if (it != symbolTable.end())
+    if (symbolTable.find(name) == symbolTable.end())
     {
-        return it->second;
+        return {nullptr, {}};
     }
-    return {nullptr, nullptr};
+
+    return symbolTable[name];
 }
 
 std::vector<std::unique_ptr<ASTNode>> Parser::parse()
@@ -81,34 +81,34 @@ std::vector<std::unique_ptr<ASTNode>> Parser::parse()
 std::unique_ptr<ASTNode> Parser::parseNext()
 {
     Token token = lexer.peek();
-    lexer.next();
+    Token next = lexer.next();
 
     switch (token.type)
     {
     case TOKEN_KEYWORD_FN:
         return parseFunctionDecl();
-        break;
+
     case TOKEN_KEYWORD_RETURN:
         return parseReturn();
-        break;
+
     case TOKEN_IDENTIFIER:
         switch (lexer.peek().type)
         {
         case TOKEN_LEFT_PAREN:
             return parseFunctionCall(token.value, true);
-            break;
+
         case TOKEN_OPERATOR_ASSIGN:
+        case TOKEN_POINTER:
             return parseReassign(token.value);
-            break;
         }
+
         break;
 
     case TOKEN_HASHTAG:
         return parseInclude();
-        break;
+
     case TOKEN_KEYWORD_LET:
         return parseVariableDeclaration();
-        break;
     }
 
     return nullptr;
@@ -116,6 +116,14 @@ std::unique_ptr<ASTNode> Parser::parseNext()
 
 std::unique_ptr<Reassign> Parser::parseReassign(std::string name)
 {
+
+    int derefCount = 0;
+
+    while (lexer.peek().type == TOKEN_POINTER)
+    {
+        derefCount++;
+        lexer.next();
+    }
 
     EXPECT_TOKEN(TOKEN_OPERATOR_ASSIGN, "Expected '='");
     lexer.next();
@@ -125,7 +133,7 @@ std::unique_ptr<Reassign> Parser::parseReassign(std::string name)
     EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
     lexer.next();
 
-    return std::make_unique<Reassign>(std::make_unique<Variable>(name), std::move(expr));
+    return std::make_unique<Reassign>(std::make_unique<Variable>(name, 0), std::move(expr), derefCount);
 }
 
 std::unique_ptr<VariableDeclaration> Parser::parseVariableDeclaration()
@@ -339,13 +347,23 @@ Parser::parsePrimary()
     {
         std::string name = lexer.peek().value;
         lexer.next();
-
         switch (lexer.peek().type)
         {
         case TOKEN_LEFT_PAREN:
             return parseFunctionCall(name, false);
+        case TOKEN_POINTER:
+        {
+            lexer.next();
+            int derefCount = 1;
+            while (lexer.peek().type == TOKEN_POINTER)
+            {
+                derefCount++;
+                lexer.next();
+            }
+            return std::make_unique<Variable>(name, derefCount);
+        }
         default:
-            return std::make_unique<Variable>(name);
+            return std::make_unique<Variable>(name, 0);
         }
     }
     case TOKEN_LEFT_PAREN:

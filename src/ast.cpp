@@ -80,7 +80,13 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
             llvm::AllocaInst *alloc = builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
             builder.CreateStore(&arg, alloc);
             arg.setName(args[i++]->name);
-            parser.addVariable(arg.getName().str(), alloc, arg.getType());
+
+            ParserType type;
+            type.type = arg.getType();
+            type.pointerType = getLLVMType(module.getContext(), this->returnType);
+            type.pointerLevel = this->returnType.pointerLevel;
+
+            parser.addVariable(arg.getName().str(), alloc, type);
         }
 
         for (auto &node : body.value())
@@ -258,7 +264,7 @@ void UnaryExpr::display(int level)
     expr->display(level + 1);
 }
 
-Variable::Variable(const std::string &name) : name(name) {}
+Variable::Variable(const std::string &name, int derefCount) : name(name), derefCount(derefCount) {}
 
 llvm::Value *Variable::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
 {
@@ -270,12 +276,24 @@ llvm::Value *Variable::codegen(llvm::IRBuilder<> &builder, llvm::Module &module,
         return nullptr;
     }
 
-    return builder.CreateLoad(var.second, value, name.c_str());
+    ParserType type = var.second;
+    if (derefCount == type.pointerLevel)
+    {
+        type.type = type.pointerType;
+    }
+
+    for (int i = 0; i <= derefCount; i++)
+    {
+        value = builder.CreateLoad(type.type, value);
+    }
+
+    return value;
 }
 
 void Variable::display(int level)
 {
     displayStringAtIndent(level, "Variable: " + name);
+    displayStringAtIndent(level + 1, "Deref Count: " + std::to_string(derefCount));
 }
 
 Include::Include(const std::string &filename) : filename(filename) {}
@@ -336,7 +354,13 @@ llvm::Value *VariableDeclaration::codegen(llvm::IRBuilder<> &builder, llvm::Modu
 
     llvm::AllocaInst *alloc = builder.CreateAlloca(val->getType(), nullptr, ident->name);
     builder.CreateStore(val, alloc);
-    parser.addVariable(ident->name, alloc, val->getType());
+
+    ParserType type;
+    type.type = val->getType();
+    type.pointerType = getLLVMType(module.getContext(), ident->type);
+    type.pointerLevel = ident->type.pointerLevel;
+
+    parser.addVariable(ident->name, alloc, type);
 
     return alloc;
 }
@@ -360,7 +384,7 @@ void Type::display(int level)
     displayStringAtIndent(level, "Type: " + type.value + " Pointer Level: " + std::to_string(pointerLevel));
 }
 
-Reassign::Reassign(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> expr) : var(std::move(var)), expr(std::move(expr)) {}
+Reassign::Reassign(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> expr, int derefCount) : var(std::move(var)), expr(std::move(expr)), derefCount(derefCount) {}
 llvm::Value *Reassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
 {
     llvm::Value *val = expr->codegen(builder, module, parser);
@@ -378,12 +402,26 @@ llvm::Value *Reassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &module,
         return nullptr;
     }
 
-    return builder.CreateStore(val, var.first);
+    llvm::Value *value = var.first;
+    ParserType varType = var.second;
+
+    if (derefCount == varType.pointerLevel)
+    {
+        varType.type = varType.pointerType;
+    }
+
+    for (int i = 0; i < derefCount; i++)
+    {
+        value = builder.CreateLoad(varType.type, value);
+    }
+
+    return builder.CreateStore(val, value);
 }
 
 void Reassign::display(int level)
 {
     displayStringAtIndent(level, "Reassign:");
+    displayStringAtIndent(level + 1, "Deref Count: " + std::to_string(derefCount));
     var->display(level + 1);
     expr->display(level + 1);
 }

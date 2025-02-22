@@ -3,9 +3,10 @@ fn malloc(size: i32) -> i8^;
 // a
 
 fn main() -> i32 {
-	let a: i32 = 5; 
-	a = a + 1;
-	printf("Hello: %d\n", a);
+	let a: u8^ = malloc(8);
+	printf("Old Pointer: %d\n", a^);
+	a^ = 1;
+	printf("New Pointer: %d\n", a^);
 
 	return 0;
 }
