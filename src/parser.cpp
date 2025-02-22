@@ -110,9 +110,31 @@ std::unique_ptr<ASTNode> Parser::parseNext()
         return parseVariableDeclaration();
     case TOKEN_KEYWORD_IF:
         return parseCondition();
+    case TOKEN_KEYWORD_WHILE:
+        return parseWhile();
     }
 
     return nullptr;
+}
+
+std::unique_ptr<While> Parser::parseWhile()
+{
+    auto condition = parseExpression(0);
+
+    EXPECT_TOKEN(TOKEN_LEFT_BRACE, "Expected '{'");
+    lexer.next();
+
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> body = std::vector<std::unique_ptr<ASTNode>>();
+
+    while (lexer.peek().type != TOKEN_RIGHT_BRACE)
+    {
+        body.value().push_back(parseNext());
+    }
+
+    EXPECT_TOKEN(TOKEN_RIGHT_BRACE, "Expected '}'");
+    lexer.next();
+
+    return std::make_unique<While>(std::move(condition), std::move(body));
 }
 
 std::unique_ptr<Condition> Parser::parseCondition()

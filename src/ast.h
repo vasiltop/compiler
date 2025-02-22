@@ -169,4 +169,14 @@ struct Condition : public ASTNode
     void display(int level) override;
 };
 
+struct While : public ASTNode
+{
+    std::unique_ptr<ASTNode> condition;
+    std::optional<std::vector<std::unique_ptr<ASTNode>>> body;
+
+    While(std::unique_ptr<ASTNode> condition, std::optional<std::vector<std::unique_ptr<ASTNode>>> body);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
 #endif

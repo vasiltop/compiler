@@ -99,7 +99,6 @@ std::unordered_map<std::string, TokenType> Lexer::keywords = {
     {"true", TOKEN_BOOL_LITERAL},
     {"false", TOKEN_BOOL_LITERAL},
     {"null", TOKEN_KEYWORD_NULL},
-
     {"struct", TOKEN_KEYWORD_STRUCT},
     {"include", TOKEN_KEYWORD_INCLUDE}};
 

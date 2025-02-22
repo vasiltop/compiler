@@ -11,5 +11,12 @@ fn main() -> i32 {
 		printf("false\n");
 	}
 
+	let i: i32 = 0;
+
+	while i < 10 {
+		printf("Num: %d\n", i);
+		i = i + 1;
+	}
+
 	return 0;
 }

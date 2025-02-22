@@ -495,3 +495,46 @@ void Condition::display(int level)
         }
     }
 }
+
+While::While(std::unique_ptr<ASTNode> condition, std::optional<std::vector<std::unique_ptr<ASTNode>>> body) : condition(std::move(condition)), body(std::move(body)) {}
+
+llvm::Value *While::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    llvm::Function *func = builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock *condBlock = llvm::BasicBlock::Create(module.getContext(), "cond", func);
+    llvm::BasicBlock *bodyBlock = llvm::BasicBlock::Create(module.getContext(), "body", func);
+    llvm::BasicBlock *mergeBlock = llvm::BasicBlock::Create(module.getContext(), "merge", func);
+
+    builder.CreateBr(condBlock);
+
+    builder.SetInsertPoint(condBlock);
+    llvm::Value *cond = condition->codegen(builder, module, parser);
+    builder.CreateCondBr(cond, bodyBlock, mergeBlock);
+
+    builder.SetInsertPoint(bodyBlock);
+    for (auto &node : body.value())
+    {
+        node->codegen(builder, module, parser);
+    }
+    builder.CreateBr(condBlock);
+
+    builder.SetInsertPoint(mergeBlock);
+
+    return nullptr;
+}
+
+void While::display(int level)
+{
+    displayStringAtIndent(level, "While:");
+    condition->display(level + 1);
+
+    if (body)
+    {
+        displayStringAtIndent(level + 1, "Body:");
+        for (auto &node : body.value())
+        {
+            node->display(level + 2);
+        }
+    }
+}

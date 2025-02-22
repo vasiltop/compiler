@@ -18,6 +18,7 @@ class Include;
 class Type;
 class Reassign;
 class Condition;
+class While;
 
 int getPrecedence(TokenType token);
 
@@ -49,7 +50,7 @@ private:
     std::unique_ptr<Type> parseType();
     std::unique_ptr<Reassign> parseReassign(std::string name);
     std::unique_ptr<Condition> parseCondition();
-
+    std::unique_ptr<While> parseWhile();
     std::unordered_map<std::string, std::pair<llvm::Value *, ParserType>> symbolTable;
 
 public:
