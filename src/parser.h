@@ -21,6 +21,9 @@ class Condition;
 class While;
 class IndexReassign;
 class VariableIndex;
+class StructDeclaration;
+class StructReassign;
+class StructField;
 
 int getPrecedence(TokenType token);
 
@@ -41,6 +44,7 @@ private:
     std::unique_ptr<FunctionCall> parseFunctionCall(std::string name, bool consumeSemicolon);
     std::unique_ptr<FunctionDecl> parseFunctionDecl();
     std::unique_ptr<VariableDeclaration> parseVariableDeclaration();
+    std::unique_ptr<StructDeclaration> parseStructDeclaration();
     std::unique_ptr<TypedIdent> parseTypedIdent();
     std::unique_ptr<Return> parseReturn();
     std::unique_ptr<ASTNode> parseExpression(int precedence);
@@ -53,7 +57,9 @@ private:
     std::unique_ptr<Reassign> parseReassign(std::string name);
     std::unique_ptr<Condition> parseCondition();
     std::unique_ptr<While> parseWhile();
+    std::unique_ptr<StructReassign> parseStructReassign(std::string name);
     std::unordered_map<std::string, std::pair<llvm::Value *, SymbolType>> symbolTable;
+    std::unordered_map<std::string, std::pair<llvm::StructType *, std::vector<std::string>>> structTable;
 
 public:
     Parser(Compiler *compiler, std::string filename);
@@ -61,6 +67,9 @@ public:
 
     void addVariable(const std::string &name, llvm::Value *value, SymbolType type);
     std::pair<llvm::Value *, SymbolType> getVariable(const std::string &name);
+
+    void addStructType(const std::string &name, llvm::StructType *type, std::vector<std::string> fields);
+    std::pair<llvm::StructType *, std::vector<std::string>> getStructType(const std::string &name);
 };
 
 #endif

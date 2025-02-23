@@ -1,0 +1,1 @@
+fn malloc(d: i32) -> u8^;

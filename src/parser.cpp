@@ -68,6 +68,21 @@ std::pair<llvm::Value *, SymbolType> Parser::getVariable(const std::string &name
     return symbolTable[name];
 }
 
+void Parser::addStructType(const std::string &name, llvm::StructType *type, std::vector<std::string> fields)
+{
+    structTable.insert({name, {type, fields}});
+}
+
+std::pair<llvm::StructType *, std::vector<std::string>> Parser::getStructType(const std::string &name)
+{
+    if (structTable.find(name) == structTable.end())
+    {
+        return {nullptr, {}};
+    }
+
+    return structTable[name];
+}
+
 std::vector<std::unique_ptr<ASTNode>> Parser::parse()
 {
     std::vector<std::unique_ptr<ASTNode>> nodes;
@@ -89,6 +104,9 @@ std::unique_ptr<ASTNode> Parser::parseNext()
     case TOKEN_KEYWORD_FN:
         return parseFunctionDecl();
 
+    case TOKEN_KEYWORD_STRUCT:
+        return parseStructDeclaration();
+
     case TOKEN_KEYWORD_RETURN:
         return parseReturn();
 
@@ -103,6 +121,8 @@ std::unique_ptr<ASTNode> Parser::parseNext()
             return parseReassign(token.value);
         case TOKEN_LEFT_SQUARE_BRACKET:
             return parseIndexReassign(token.value);
+        case TOKEN_DOT:
+            return parseStructReassign(token.value);
         }
 
         break;
@@ -118,6 +138,49 @@ std::unique_ptr<ASTNode> Parser::parseNext()
     }
 
     return nullptr;
+}
+
+std::unique_ptr<StructReassign> Parser::parseStructReassign(std::string name)
+{
+    EXPECT_TOKEN(TOKEN_DOT, "Expected '.'");
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier");
+    std::string member = lexer.peek().value;
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_OPERATOR_ASSIGN, "Expected '='");
+    lexer.next();
+
+    auto expr = parseExpression(0);
+
+    EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';");
+    lexer.next();
+
+    return std::make_unique<StructReassign>(std::make_unique<Variable>(name, 0), member, std::move(expr));
+}
+
+std::unique_ptr<StructDeclaration> Parser::parseStructDeclaration()
+{
+    EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier for struct");
+    std::string name = lexer.peek().value;
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_LEFT_BRACE, "Expected '{'");
+    lexer.next();
+
+    std::vector<std::unique_ptr<TypedIdent>> members;
+    while (lexer.peek().type != TOKEN_RIGHT_BRACE)
+    {
+        members.push_back(parseTypedIdent());
+        EXPECT_TOKEN(TOKEN_COMMA, "Expected ',");
+        lexer.next();
+    }
+
+    EXPECT_TOKEN(TOKEN_RIGHT_BRACE, "Expected '}'");
+    lexer.next();
+
+    return std::make_unique<StructDeclaration>(name, members);
 }
 
 std::unique_ptr<While> Parser::parseWhile()
@@ -227,6 +290,12 @@ std::unique_ptr<VariableDeclaration> Parser::parseVariableDeclaration()
 {
     auto ident = parseTypedIdent();
 
+    if (lexer.peek().type == TOKEN_SEMICOLON)
+    {
+        lexer.next();
+        return std::make_unique<VariableDeclaration>(std::move(ident), nullptr);
+    }
+
     EXPECT_TOKEN(TOKEN_OPERATOR_ASSIGN, "Expected '='");
     lexer.next();
 
@@ -240,6 +309,12 @@ std::unique_ptr<VariableDeclaration> Parser::parseVariableDeclaration()
 
 std::unique_ptr<Return> Parser::parseReturn()
 {
+
+    if (lexer.peek().type == TOKEN_SEMICOLON)
+    {
+        lexer.next();
+        return std::make_unique<Return>(nullptr);
+    }
 
     auto expr = parseExpression(0);
 
@@ -444,6 +519,15 @@ Parser::parsePrimary()
             lexer.next();
 
             return std::make_unique<VariableIndex>(std::make_unique<Variable>(name, 0), std::move(index));
+        }
+        case TOKEN_DOT:
+        {
+            lexer.next();
+            EXPECT_TOKEN(TOKEN_IDENTIFIER, "Expected identifier");
+            std::string member = lexer.peek().value;
+            lexer.next();
+
+            return std::make_unique<StructField>(std::make_unique<Variable>(name, 0), member);
         }
         case TOKEN_LEFT_PAREN:
             return parseFunctionCall(name, false);

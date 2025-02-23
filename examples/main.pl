@@ -1,12 +1,26 @@
-#include "other.pl";
+fn printf(s: u8^) -> i32;
+fn malloc(d: i32) -> void^;
 
-fn malloc(d: i32) -> u8^;
+struct Test {
+	a: i32^,
+	b: i32,
+}
 
 fn main() -> i32 {
+	let t: Test;
 
-	let mlc: u8^ = malloc(4);
-	mlc[0] = 4;
-	m(mlc);
+	t.a = malloc(4);
+
+	let ptr: i32^ = t.a;
+	ptr[0] = 10;
+
+
+	t.b = 10;
+	printf("%d\n", t.b);
+
+	t.b = 12;
+	printf("%p\n", t.a);
+
 
 	return 0;
 }

@@ -200,4 +200,35 @@ struct VariableIndex : public ASTNode
     void display(int level) override;
 };
 
+struct StructField : public ASTNode
+{
+    std::unique_ptr<Variable> var;
+    std::string member;
+
+    StructField(std::unique_ptr<Variable> var, std::string &member);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
+struct StructDeclaration : public ASTNode
+{
+    std::string name;
+    std::vector<std::unique_ptr<TypedIdent>> members;
+
+    StructDeclaration(const std::string &name, std::vector<std::unique_ptr<TypedIdent>> &members);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
+struct StructReassign : public ASTNode
+{
+    std::unique_ptr<Variable> var;
+    std::string member;
+    std::unique_ptr<ASTNode> expr;
+
+    StructReassign(std::unique_ptr<Variable> var, std::string &member, std::unique_ptr<ASTNode> expr);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
 #endif

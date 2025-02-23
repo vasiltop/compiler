@@ -6,7 +6,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
 
-static llvm::Type *getLLVMType(llvm::LLVMContext &context, const Type &type)
+static llvm::Type *getLLVMType(llvm::LLVMContext &context, const Type &type, Parser &parser)
 {
     std::string stringType = type.type.value;
     llvm::Type *t = nullptr;
@@ -33,7 +33,7 @@ static llvm::Type *getLLVMType(llvm::LLVMContext &context, const Type &type)
     }
     else
     {
-        std::cerr << "Unknown type: " << stringType << std::endl;
+        t = parser.getStructType(stringType).first;
     }
 
     return t;
@@ -54,7 +54,7 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
     for (auto &arg : args)
     {
         TypedIdent *typedIdent = arg.get();
-        llvm::Type *type = getLLVMType(module.getContext(), typedIdent->type);
+        llvm::Type *type = getLLVMType(module.getContext(), typedIdent->type, parser);
 
         if (typedIdent->type.pointerLevel > 0)
         {
@@ -64,7 +64,7 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
         argTypes.push_back(type);
     }
 
-    llvm::Type *returnType = getLLVMType(module.getContext(), this->returnType);
+    llvm::Type *returnType = getLLVMType(module.getContext(), this->returnType, parser);
     if (this->returnType.pointerLevel > 0)
     {
         returnType = llvm::PointerType::get(returnType, 0);
@@ -88,7 +88,7 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
             arg.setName(args[i++]->name);
 
             SymbolType type;
-            type.type = getLLVMType(module.getContext(), args[i - 1]->type);
+            type.type = getLLVMType(module.getContext(), args[i - 1]->type, parser);
             type.pointerLevel = args[i - 1]->type.pointerLevel;
 
             parser.addVariable(arg.getName().str(), alloc, type);
@@ -97,6 +97,11 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
         for (auto &node : body.value())
         {
             node->codegen(builder, module, parser);
+        }
+
+        if (returnType->isVoidTy())
+        {
+            builder.CreateRetVoid();
         }
     }
     return func;
@@ -334,6 +339,11 @@ Return::Return(std::unique_ptr<ASTNode> expr) : expr(std::move(expr)) {}
 
 llvm::Value *Return::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
 {
+    if (!expr)
+    {
+        return builder.CreateRetVoid();
+    }
+
     llvm::Value *retValue = expr->codegen(builder, module, parser);
 
     if (!retValue)
@@ -354,18 +364,27 @@ VariableDeclaration::VariableDeclaration(std::unique_ptr<TypedIdent> ident, std:
 
 llvm::Value *VariableDeclaration::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
 {
-    llvm::Value *val = expr->codegen(builder, module, parser);
+    llvm::Type *declarationType = getLLVMType(module.getContext(), ident->type, parser);
+    llvm::Value *value = nullptr;
 
-    if (!val)
+    if (!expr)
     {
-        return nullptr;
+        declarationType = parser.getStructType(ident->type.type.value).first;
+    }
+    else
+    {
+        value = expr->codegen(builder, module, parser);
     }
 
-    llvm::AllocaInst *alloc = builder.CreateAlloca(val->getType(), nullptr, ident->name);
-    builder.CreateStore(val, alloc);
+    llvm::AllocaInst *alloc = builder.CreateAlloca(declarationType, nullptr, ident->name);
+
+    if (value)
+    {
+        builder.CreateStore(value, alloc);
+    }
 
     SymbolType type;
-    type.type = getLLVMType(module.getContext(), ident->type);
+    type.type = getLLVMType(module.getContext(), ident->type, parser);
     type.pointerLevel = ident->type.pointerLevel;
 
     parser.addVariable(ident->name, alloc, type);
@@ -377,7 +396,11 @@ void VariableDeclaration::display(int level)
 {
     displayStringAtIndent(level, "VariableDeclaration:");
     ident->display(level + 1);
-    expr->display(level + 1);
+
+    if (expr)
+    {
+        expr->display(level + 1);
+    }
 }
 
 Type::Type(Token type, int pointerLevel) : type(type), pointerLevel(pointerLevel) {}
@@ -610,4 +633,130 @@ void VariableIndex::display(int level)
     displayStringAtIndent(level, "VariableIndex:");
     var->display(level + 1);
     index->display(level + 1);
+}
+
+StructDeclaration::StructDeclaration(const std::string &name, std::vector<std::unique_ptr<TypedIdent>> &members) : name(name), members(std::move(members)) {}
+
+llvm::Value *StructDeclaration::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    std::vector<llvm::Type *> memberTypes;
+
+    for (auto &member : members)
+    {
+        llvm::Type *type = getLLVMType(module.getContext(), member->type, parser);
+
+        if (member->type.pointerLevel > 0)
+        {
+            type = llvm::PointerType::get(type, 0);
+        }
+
+        memberTypes.push_back(type);
+    }
+
+    std::vector<std::string> memberNames;
+    for (auto &member : members)
+    {
+        memberNames.push_back(member->name);
+    }
+
+    llvm::StructType *structType = llvm::StructType::create(module.getContext(), memberTypes, name);
+    parser.addStructType(name, structType, memberNames);
+
+    return nullptr;
+}
+
+void StructDeclaration::display(int level)
+{
+    displayStringAtIndent(level, "StructDeclaration: " + name);
+
+    for (auto &member : members)
+    {
+        member->display(level + 1);
+    }
+}
+
+StructReassign::StructReassign(std::unique_ptr<Variable> var, std::string &member, std::unique_ptr<ASTNode> expr) : var(std::move(var)), member(member), expr(std::move(expr)) {}
+
+llvm::Value *StructReassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    auto v = parser.getVariable(var->name);
+
+    if (!v.first)
+    {
+        std::cerr << "Error: Unknown variable '" << var->name << "'." << std::endl;
+        return nullptr;
+    }
+
+    std::pair<llvm::StructType *, std::vector<std::string>> structInfo = parser.getStructType(v.second.type->getStructName().str());
+
+    llvm::StructType *structType = llvm::cast<llvm::StructType>(v.second.type);
+
+    int index = -1;
+    for (int i = 0; i < structInfo.second.size(); i++)
+    {
+        if (structInfo.second[i] == member)
+        {
+            index = i;
+            break;
+        }
+    }
+
+    llvm::Value *memberPtr = builder.CreateStructGEP(v.second.type, v.first, index, "member_ptr");
+
+    llvm::Value *exprValue = expr->codegen(builder, module, parser);
+    if (!exprValue)
+    {
+        std::cerr << "Error: Failed to generate code for expression." << std::endl;
+        return nullptr;
+    }
+
+    builder.CreateStore(exprValue, memberPtr);
+
+    return exprValue;
+}
+
+void StructReassign::display(int level)
+{
+    displayStringAtIndent(level, "StructReassign:");
+    var->display(level + 1);
+    displayStringAtIndent(level + 1, "Member: " + member);
+    expr->display(level + 1);
+}
+
+StructField::StructField(std::unique_ptr<Variable> var, std::string &member) : var(std::move(var)), member(member) {}
+
+llvm::Value *StructField::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    auto v = parser.getVariable(var->name);
+
+    if (!v.first)
+    {
+        std::cerr << "Error: Unknown variable '" << var->name << "'." << std::endl;
+        return nullptr;
+    }
+
+    std::pair<llvm::StructType *, std::vector<std::string>> structInfo = parser.getStructType(v.second.type->getStructName().str());
+
+    llvm::StructType *structType = llvm::cast<llvm::StructType>(v.second.type);
+
+    int index = -1;
+    for (int i = 0; i < structInfo.second.size(); i++)
+    {
+        if (structInfo.second[i] == member)
+        {
+            index = i;
+            break;
+        }
+    }
+
+    llvm::Value *memberPtr = builder.CreateStructGEP(v.second.type, v.first, index, "member_ptr");
+
+    return builder.CreateLoad(structType->getElementType(index), memberPtr);
+}
+
+void StructField::display(int level)
+{
+    displayStringAtIndent(level, "StructField:");
+    var->display(level + 1);
+    displayStringAtIndent(level + 1, "Member: " + member);
 }
