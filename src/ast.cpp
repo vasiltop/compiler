@@ -55,6 +55,12 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
     {
         TypedIdent *typedIdent = arg.get();
         llvm::Type *type = getLLVMType(module.getContext(), typedIdent->type);
+
+        if (typedIdent->type.pointerLevel > 0)
+        {
+            type = llvm::PointerType::get(type, 0);
+        }
+
         argTypes.push_back(type);
     }
 

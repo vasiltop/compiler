@@ -1,12 +1,12 @@
 #include "examples/other.pl";
 
-fn malloc(b: i32) -> u8^;
-fn printf(s: u8^) -> i32;
+fn malloc(d: i32) -> u8^;
 
 fn main() -> i32 {
-	let b: i32^ = m(4);
-	printf("%d\n", b[0]);
+
+	let mlc: u8^ = malloc(4);
+	mlc[0] = 4;
+	m(mlc);
 
 	return 0;
 }
-
