@@ -1,0 +1,1 @@
+fn printf(s: u8^) -> i32;
