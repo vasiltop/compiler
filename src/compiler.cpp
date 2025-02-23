@@ -1,6 +1,20 @@
 #include "compiler.h"
 #include <iostream>
 
+fs::path Compiler::resolvePath(const std::string &filename) const
+{
+    fs::path filepath(filename);
+
+    // If the path is already absolute, use it as-is
+    if (filepath.is_absolute())
+    {
+        return filepath;
+    }
+
+    // Otherwise, resolve it relative to the base directory
+    return baseDir / filepath;
+}
+
 Compiler::Compiler(int argc, char **argv)
 {
     if (argc < 2)
@@ -9,13 +23,21 @@ Compiler::Compiler(int argc, char **argv)
         exit(1);
     }
 
-    char *filename = argv[1];
+    char *inputPath = argv[1];
+    fs::path filepath(inputPath);
+
+    if (!filepath.is_absolute())
+    {
+        filepath = fs::absolute(filepath);
+    }
+
+    baseDir = filepath.parent_path();
 
     context = std::make_unique<llvm::LLVMContext>();
     builder = std::make_unique<llvm::IRBuilder<>>(*context);
     module = std::make_unique<llvm::Module>("main", *context);
 
-    compile(filename);
+    compile(resolvePath(filepath));
     module->print(llvm::outs(), nullptr);
 }
 

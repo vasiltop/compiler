@@ -1,5 +1,6 @@
 #include <iostream>
 #include "parser.h"
+#include "compiler.h"
 
 #define PANIC(message)                                                                                                \
     do                                                                                                                \
@@ -260,7 +261,7 @@ std::unique_ptr<Include> Parser::parseInclude()
     EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
     lexer.next();
 
-    compiler->compile(filename);
+    compiler->compile(compiler->resolvePath(filename));
 
     return std::make_unique<Include>(filename);
 }

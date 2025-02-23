@@ -5,6 +5,9 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 class Parser;
 
@@ -14,6 +17,9 @@ public:
     Compiler(int arg, char **argv);
     void compile(const std::string &filename);
     size_t amountOfFiles();
+    std::string baseDir;
+
+    fs::path resolvePath(const std::string &filename) const;
 
 private:
     std::unordered_map<std::string, Parser> parsers;

@@ -1,4 +1,4 @@
-#include "examples/other.pl";
+#include "other.pl";
 
 fn malloc(d: i32) -> u8^;
 
