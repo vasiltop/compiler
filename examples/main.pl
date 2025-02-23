@@ -8,6 +8,7 @@ struct Test {
 
 fn main() -> i32 {
 	let t: Test;
+	// hello comment
 
 	t.a = malloc(8);
 
@@ -15,8 +16,9 @@ fn main() -> i32 {
 	c[0] = 69;
 
 	let p: i32^ = t.a;
-
-	let test: i32 = p[0];
+ //new comment
+ //asdkj hnasj
+	let test: i32 = p[0]; // third
 	
 	printf("%d\n", test);
 	return 0;

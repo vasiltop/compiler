@@ -75,6 +75,7 @@ void InputBuffer::skipComment()
             advance();
         }
         skipWhitespace();
+        skipComment();
     }
 }
 
