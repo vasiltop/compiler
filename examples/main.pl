@@ -9,18 +9,15 @@ struct Test {
 fn main() -> i32 {
 	let t: Test;
 
-	t.a = malloc(4);
+	t.a = malloc(8);
 
-	let ptr: i32^ = t.a;
-	ptr[0] = 10;
+	let c: i32^ = t.a;
+	c[0] = 69;
 
+	let p: i32^ = t.a;
 
-	t.b = 10;
-	printf("%d\n", t.b);
-
-	t.b = 12;
-	printf("%p\n", t.a);
-
-
+	let test: i32 = p[0];
+	
+	printf("%d\n", test);
 	return 0;
 }

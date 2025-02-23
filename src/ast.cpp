@@ -365,6 +365,12 @@ VariableDeclaration::VariableDeclaration(std::unique_ptr<TypedIdent> ident, std:
 llvm::Value *VariableDeclaration::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
 {
     llvm::Type *declarationType = getLLVMType(module.getContext(), ident->type, parser);
+
+    if (ident->type.pointerLevel > 0)
+    {
+        declarationType = llvm::PointerType::get(declarationType, 0);
+    }
+
     llvm::Value *value = nullptr;
 
     if (!expr)
@@ -701,7 +707,8 @@ llvm::Value *StructReassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &m
         }
     }
 
-    llvm::Value *memberPtr = builder.CreateStructGEP(v.second.type, v.first, index, "member_ptr");
+    llvm::Value *ptr = builder.CreateLoad(llvm::PointerType::get(structType, 0), v.first, var->name.c_str());
+    llvm::Value *memberPtr = builder.CreateStructGEP(v.second.type, ptr, index, "member_ptr");
 
     llvm::Value *exprValue = expr->codegen(builder, module, parser);
     if (!exprValue)
