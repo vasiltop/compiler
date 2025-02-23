@@ -82,8 +82,8 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
             arg.setName(args[i++]->name);
 
             SymbolType type;
-            type.type = getLLVMType(module.getContext(), this->returnType);
-            type.pointerLevel = this->returnType.pointerLevel;
+            type.type = getLLVMType(module.getContext(), args[i - 1]->type);
+            type.pointerLevel = args[i - 1]->type.pointerLevel;
 
             parser.addVariable(arg.getName().str(), alloc, type);
         }

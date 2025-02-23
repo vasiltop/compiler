@@ -1,5 +1,5 @@
-#include "examples/third.pl";
+fn malloc(b: i32) -> u8^;
 
-fn foo(a: i32, b: i32) -> i32 {
-	return a + b + third();
+fn m(b: i32) -> u8^ {
+	return malloc(b);
 }
