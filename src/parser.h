@@ -19,13 +19,14 @@ class Type;
 class Reassign;
 class Condition;
 class While;
+class IndexReassign;
+class VariableIndex;
 
 int getPrecedence(TokenType token);
 
-struct ParserType
+struct SymbolType
 {
     llvm::Type *type;
-    llvm::Type *pointerType;
     int pointerLevel;
 };
 
@@ -47,18 +48,19 @@ private:
     std::unique_ptr<ASTNode> parseUnary();
     std::unique_ptr<Include> parseInclude();
     std::unique_ptr<ASTNode> parseNext();
+    std::unique_ptr<IndexReassign> parseIndexReassign(std::string name);
     std::unique_ptr<Type> parseType();
     std::unique_ptr<Reassign> parseReassign(std::string name);
     std::unique_ptr<Condition> parseCondition();
     std::unique_ptr<While> parseWhile();
-    std::unordered_map<std::string, std::pair<llvm::Value *, ParserType>> symbolTable;
+    std::unordered_map<std::string, std::pair<llvm::Value *, SymbolType>> symbolTable;
 
 public:
     Parser(Compiler *compiler, std::string filename);
     std::vector<std::unique_ptr<ASTNode>> parse();
 
-    void addVariable(const std::string &name, llvm::Value *value, ParserType type);
-    std::pair<llvm::Value *, ParserType> getVariable(const std::string &name);
+    void addVariable(const std::string &name, llvm::Value *value, SymbolType type);
+    std::pair<llvm::Value *, SymbolType> getVariable(const std::string &name);
 };
 
 #endif

@@ -52,12 +52,12 @@ Parser::Parser(Compiler *compiler, std::string filename) : compiler(compiler), l
     // lexer.dumpTokens();
 }
 
-void Parser::addVariable(const std::string &name, llvm::Value *value, ParserType type)
+void Parser::addVariable(const std::string &name, llvm::Value *value, SymbolType type)
 {
     symbolTable.insert({name, {value, type}});
 }
 
-std::pair<llvm::Value *, ParserType> Parser::getVariable(const std::string &name)
+std::pair<llvm::Value *, SymbolType> Parser::getVariable(const std::string &name)
 {
     if (symbolTable.find(name) == symbolTable.end())
     {
@@ -100,6 +100,8 @@ std::unique_ptr<ASTNode> Parser::parseNext()
         case TOKEN_OPERATOR_ASSIGN:
         case TOKEN_POINTER:
             return parseReassign(token.value);
+        case TOKEN_LEFT_SQUARE_BRACKET:
+            return parseIndexReassign(token.value);
         }
 
         break;
@@ -196,6 +198,28 @@ std::unique_ptr<Reassign> Parser::parseReassign(std::string name)
     lexer.next();
 
     return std::make_unique<Reassign>(std::make_unique<Variable>(name, 0), std::move(expr), derefCount);
+}
+
+std::unique_ptr<IndexReassign> Parser::parseIndexReassign(std::string name)
+{
+    EXPECT_TOKEN(TOKEN_LEFT_SQUARE_BRACKET, "Expected '['");
+    lexer.next();
+
+    auto index = parseExpression(0);
+
+    EXPECT_TOKEN(TOKEN_RIGHT_SQUARE_BRACKET, "Expected ']'");
+    lexer.next();
+
+    EXPECT_TOKEN(TOKEN_OPERATOR_ASSIGN, "Expected '='");
+
+    lexer.next();
+
+    auto expr = parseExpression(0);
+
+    EXPECT_TOKEN(TOKEN_SEMICOLON, "Expected ';'");
+    lexer.next();
+
+    return std::make_unique<IndexReassign>(std::make_unique<Variable>(name, 0), std::move(index), std::move(expr));
 }
 
 std::unique_ptr<VariableDeclaration> Parser::parseVariableDeclaration()
@@ -411,6 +435,15 @@ Parser::parsePrimary()
         lexer.next();
         switch (lexer.peek().type)
         {
+        case TOKEN_LEFT_SQUARE_BRACKET:
+        {
+            lexer.next();
+            auto index = parseExpression(0);
+            EXPECT_TOKEN(TOKEN_RIGHT_SQUARE_BRACKET, "Expected ']'");
+            lexer.next();
+
+            return std::make_unique<VariableIndex>(std::make_unique<Variable>(name, 0), std::move(index));
+        }
         case TOKEN_LEFT_PAREN:
             return parseFunctionCall(name, false);
         case TOKEN_POINTER:

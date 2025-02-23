@@ -36,11 +36,6 @@ static llvm::Type *getLLVMType(llvm::LLVMContext &context, const Type &type)
         std::cerr << "Unknown type: " << stringType << std::endl;
     }
 
-    for (int i = 0; i < type.pointerLevel; i++)
-    {
-        t = llvm::PointerType::get(t, 0);
-    }
-
     return t;
 }
 
@@ -64,6 +59,11 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
     }
 
     llvm::Type *returnType = getLLVMType(module.getContext(), this->returnType);
+    if (this->returnType.pointerLevel > 0)
+    {
+        returnType = llvm::PointerType::get(returnType, 0);
+    }
+
     llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, argTypes, false);
 
     llvm::Function *func = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, name, &module);
@@ -81,9 +81,8 @@ llvm::Value *FunctionDecl::codegen(llvm::IRBuilder<> &builder, llvm::Module &mod
             builder.CreateStore(&arg, alloc);
             arg.setName(args[i++]->name);
 
-            ParserType type;
-            type.type = arg.getType();
-            type.pointerType = getLLVMType(module.getContext(), this->returnType);
+            SymbolType type;
+            type.type = getLLVMType(module.getContext(), this->returnType);
             type.pointerLevel = this->returnType.pointerLevel;
 
             parser.addVariable(arg.getName().str(), alloc, type);
@@ -276,15 +275,16 @@ llvm::Value *Variable::codegen(llvm::IRBuilder<> &builder, llvm::Module &module,
         return nullptr;
     }
 
-    ParserType type = var.second;
-    if (derefCount == type.pointerLevel)
+    llvm::Type *type = var.second.type;
+
+    if (derefCount != var.second.pointerLevel)
     {
-        type.type = type.pointerType;
+        type = llvm::PointerType::get(var.second.type, 0);
     }
 
     for (int i = 0; i <= derefCount; i++)
     {
-        value = builder.CreateLoad(type.type, value);
+        value = builder.CreateLoad(type, value);
     }
 
     return value;
@@ -355,9 +355,8 @@ llvm::Value *VariableDeclaration::codegen(llvm::IRBuilder<> &builder, llvm::Modu
     llvm::AllocaInst *alloc = builder.CreateAlloca(val->getType(), nullptr, ident->name);
     builder.CreateStore(val, alloc);
 
-    ParserType type;
-    type.type = val->getType();
-    type.pointerType = getLLVMType(module.getContext(), ident->type);
+    SymbolType type;
+    type.type = getLLVMType(module.getContext(), ident->type);
     type.pointerLevel = ident->type.pointerLevel;
 
     parser.addVariable(ident->name, alloc, type);
@@ -403,16 +402,16 @@ llvm::Value *Reassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &module,
     }
 
     llvm::Value *value = var.first;
-    ParserType varType = var.second;
+    llvm::Type *type = var.second.type;
 
-    if (derefCount == varType.pointerLevel)
+    if (derefCount != var.second.pointerLevel)
     {
-        varType.type = varType.pointerType;
+        type = llvm::PointerType::get(var.second.type, 0);
     }
 
     for (int i = 0; i < derefCount; i++)
     {
-        value = builder.CreateLoad(varType.type, value);
+        value = builder.CreateLoad(type, value);
     }
 
     return builder.CreateStore(val, value);
@@ -537,4 +536,74 @@ void While::display(int level)
             node->display(level + 2);
         }
     }
+}
+
+IndexReassign::IndexReassign(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> index, std::unique_ptr<ASTNode> expr) : var(std::move(var)), index(std::move(index)), expr(std::move(expr)) {}
+
+llvm::Value *IndexReassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    auto v = parser.getVariable(var->name);
+    if (!v.first)
+    {
+        std::cerr << "Error: Unknown variable '" << var->name << "'." << std::endl;
+        return nullptr;
+    }
+
+    llvm::Value *i = index->codegen(builder, module, parser);
+    if (!i)
+    {
+        return nullptr;
+    }
+
+    llvm::Value *exprValue = expr->codegen(builder, module, parser);
+    if (!exprValue)
+    {
+        return nullptr;
+    }
+
+    llvm::Value *ptr = builder.CreateLoad(llvm::PointerType::get(v.second.type, 0), v.first);
+    llvm::Value *elemPtr = builder.CreateGEP(v.second.type, ptr, {i}, "elem_ptr");
+
+    builder.CreateStore(exprValue, elemPtr);
+
+    return exprValue;
+}
+
+void IndexReassign::display(int level)
+{
+    displayStringAtIndent(level, "IndexReassign:");
+    var->display(level + 1);
+    index->display(level + 1);
+    expr->display(level + 1);
+}
+
+VariableIndex::VariableIndex(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> index) : var(std::move(var)), index(std::move(index)) {}
+
+llvm::Value *VariableIndex::codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser)
+{
+    auto v = parser.getVariable(var->name);
+
+    if (!v.first)
+    {
+        std::cerr << "Error: Unknown variable '" << var->name << "'." << std::endl;
+        return nullptr;
+    }
+
+    llvm::Value *i = index->codegen(builder, module, parser);
+
+    if (!i)
+    {
+        return nullptr;
+    }
+
+    llvm::Value *ptr = builder.CreateLoad(llvm::PointerType::get(v.second.type, 0), v.first);
+    llvm::Value *elemPtr = builder.CreateGEP(v.second.type, ptr, {i}, "elem_ptr");
+    return builder.CreateLoad(v.second.type, elemPtr);
+}
+
+void VariableIndex::display(int level)
+{
+    displayStringAtIndent(level, "VariableIndex:");
+    var->display(level + 1);
+    index->display(level + 1);
 }

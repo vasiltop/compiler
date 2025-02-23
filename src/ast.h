@@ -179,4 +179,25 @@ struct While : public ASTNode
     void display(int level) override;
 };
 
+struct IndexReassign : public ASTNode
+{
+    std::unique_ptr<Variable> var;
+    std::unique_ptr<ASTNode> index;
+    std::unique_ptr<ASTNode> expr;
+
+    IndexReassign(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> index, std::unique_ptr<ASTNode> expr);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
+struct VariableIndex : public ASTNode
+{
+    std::unique_ptr<Variable> var;
+    std::unique_ptr<ASTNode> index;
+
+    VariableIndex(std::unique_ptr<Variable> var, std::unique_ptr<ASTNode> index);
+    llvm::Value *codegen(llvm::IRBuilder<> &builder, llvm::Module &module, Parser &parser) override;
+    void display(int level) override;
+};
+
 #endif
