@@ -2,15 +2,7 @@
 #include "std/io.pl";
 #include "std/sdl.pl";
 
-struct Test {
-	a: i32^,
-	b: i32,
-}
-
 fn main() -> i32 {
-	let test: Test;
-	test.a = malloc(4);
-
 	let SDL_INIT_VIDEO: i32 = 32;
 	let SDL_QUIT: i32 = 256;
 	
