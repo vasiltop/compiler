@@ -7,21 +7,12 @@ LLVM_LDFLAGS := $(shell llvm-config --ldflags)
 LLVM_SYSTEM_LIBS := $(shell llvm-config --system-libs)
 
 SRC := src/*.cpp
-GEN := bin/generator
-IR_TARGET := bin/compiler.ll
 TARGET := bin/compiler
 
 $(shell mkdir -p bin)
 
-run:
-	$(CXX) $(CXXFLAGS) -g -I$(LLVM_INCLUDE) $(SRC) -o $(GEN) $(LLVM_LIBS) $(LLVM_LDFLAGS) $(LLVM_SYSTEM_LIBS)
-	./$(GEN) examples/main.pl
-
-compile-ir:
-	./$(GEN) examples/main.pl > $(IR_TARGET)
-	clang -o $(TARGET) $(IR_TARGET) -lSDL2
-	./$(TARGET)
+build:
+	$(CXX) $(CXXFLAGS) -g -I$(LLVM_INCLUDE) $(SRC) -o $(TARGET) $(LLVM_LIBS) $(LLVM_LDFLAGS) $(LLVM_SYSTEM_LIBS)
 
 clean:
 	rm -f $(TARGET)
-

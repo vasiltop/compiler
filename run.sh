@@ -1,0 +1,1 @@
+./bin/compiler $1 && clang -o build/out build/output.ll && ./build/out && rm output.ll

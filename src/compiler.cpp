@@ -13,6 +13,22 @@ fs::path Compiler::resolvePath(const std::string &filename) const
     return baseDir / filepath;
 }
 
+void writeModuleToFile(std::unique_ptr<llvm::Module> module, const std::string &filename)
+{
+    std::error_code errorCode;
+    llvm::raw_fd_ostream outFile(filename, errorCode);
+
+    if (errorCode)
+    {
+        llvm::errs() << "Error opening file '" << filename << "': " << errorCode.message() << "\n";
+        return;
+    }
+
+    module->print(outFile, nullptr);
+
+    outFile.close();
+}
+
 Compiler::Compiler(int argc, char **argv)
 {
     if (argc < 2)
@@ -36,7 +52,7 @@ Compiler::Compiler(int argc, char **argv)
     module = std::make_unique<llvm::Module>("main", *context);
 
     compile(resolvePath(filepath));
-    module->print(llvm::outs(), nullptr);
+    writeModuleToFile(std::move(module), "build/output.ll");
 }
 
 void Compiler::compile(const std::string &filename)
@@ -49,15 +65,6 @@ void Compiler::compile(const std::string &filename)
     Parser parser(this, filename);
     parsers.insert({filename, parser});
     auto ast = parser.parse();
-
-    /*
-    std::cout << "AST for " << filename << std::endl;
-    for (auto &node : ast)
-    {
-        node->display(0);
-    }
-    std::cout << std::endl;
-    */
 
     for (auto &node : ast)
     {
