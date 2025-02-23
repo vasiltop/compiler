@@ -707,8 +707,7 @@ llvm::Value *StructReassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &m
         }
     }
 
-    llvm::Value *ptr = builder.CreateLoad(llvm::PointerType::get(structType, 0), v.first, var->name.c_str());
-    llvm::Value *memberPtr = builder.CreateStructGEP(v.second.type, ptr, index, "member_ptr");
+    llvm::Value *memberPtr = builder.CreateStructGEP(v.second.type, v.first, index, "member_ptr");
 
     llvm::Value *exprValue = expr->codegen(builder, module, parser);
     if (!exprValue)
