@@ -446,17 +446,7 @@ Parser::parsePrimary()
         }
         case TOKEN_LEFT_PAREN:
             return parseFunctionCall(name, false);
-        case TOKEN_POINTER:
-        {
-            lexer.next();
-            int derefCount = 1;
-            while (lexer.peek().type == TOKEN_POINTER)
-            {
-                derefCount++;
-                lexer.next();
-            }
-            return std::make_unique<Variable>(name, derefCount);
-        }
+
         default:
             return std::make_unique<Variable>(name, 0);
         }

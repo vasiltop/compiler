@@ -280,14 +280,17 @@ llvm::Value *Variable::codegen(llvm::IRBuilder<> &builder, llvm::Module &module,
     if (derefCount != var.second.pointerLevel)
     {
         type = llvm::PointerType::get(var.second.type, 0);
-    }
+        for (int i = 0; i <= derefCount; i++)
+        {
+            value = builder.CreateLoad(type, value);
+        }
 
-    for (int i = 0; i <= derefCount; i++)
+        return value;
+    }
+    else
     {
-        value = builder.CreateLoad(type, value);
+        return builder.CreateLoad(type, value);
     }
-
-    return value;
 }
 
 void Variable::display(int level)
@@ -407,11 +410,6 @@ llvm::Value *Reassign::codegen(llvm::IRBuilder<> &builder, llvm::Module &module,
     if (derefCount != var.second.pointerLevel)
     {
         type = llvm::PointerType::get(var.second.type, 0);
-    }
-
-    for (int i = 0; i < derefCount; i++)
-    {
-        value = builder.CreateLoad(type, value);
     }
 
     return builder.CreateStore(val, value);
