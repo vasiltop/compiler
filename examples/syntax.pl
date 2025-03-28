@@ -3,12 +3,12 @@
 printf :: (s: ^u8) i32
 
 main :: () i32 {
-	test();
+	test("test");
 	// test2()
 	ret 0;
 }
 
-test :: () void {
+test :: (s: ^u8) void {
 	printf("hello world");
 }
 

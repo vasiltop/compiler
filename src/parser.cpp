@@ -1,23 +1,26 @@
 #include "parser.h"
 #include "lexer.h"
 
-Parser::Parser(std::filesystem::path p): index(0)
+FileParser::FileParser(std::vector<Token> tokens, std::filesystem::path path, Parser *parser) : tokens(tokens), index(0), path(path), parser(parser)
+{
+	baseDir = path.parent_path();
+}
+
+Parser::Parser(std::filesystem::path p)
 {
 	if (!p.is_absolute())
 	{
 		p = std::filesystem::absolute(p);
 	}
-
-	baseDir = p.parent_path();
 	
 	parse(p);
 }
 
-std::vector<ASTNode> Parser::parse()
+std::vector<ASTNode *> FileParser::parse()
 {
-	std::vector<ASTNode> nodes;
+	std::vector<ASTNode *> nodes;
 	
-	while (index < tokens.size())
+	while (!eof())
 	{
 		// Check if we need to import another file
 
@@ -30,9 +33,7 @@ std::vector<ASTNode> Parser::parse()
 			std::filesystem::path path = tokens[index].value;
 			index++;
 
-			parse(baseDir/path);
-
-			continue;
+			parser->parse(baseDir/path);
 		}
 
 		nodes.push_back(parseGlobal());
@@ -41,7 +42,7 @@ std::vector<ASTNode> Parser::parse()
 	return nodes;
 }
 
-ASTNode Parser::parseGlobal()
+ASTNode *FileParser::parseGlobal()
 {
 	Token cur = tokens[index];
 
@@ -52,14 +53,22 @@ ASTNode Parser::parseGlobal()
 		break;
 	}
 
-	std::cerr << "Did not match any of the options when parsing global\n";
+	Token p = tokens[index];
+	FilePosition pos = p.position;
+
+	std::cerr << path.string() << ":"                                   \
+			<< pos.row << ":" << pos.col \
+			<< " > error: " << "Did not match any of the options when parsing global\n" \
+			<< " Received: " << p.value                           \
+			<< std::endl;
 	exit(1);
 
 }
 
-ASTNode Parser::parseFunction() {
-	FunctionDefinition def;
-	def.name = expectConsume(TOKEN_IDENTIFIER, "Expected Global Identifier").value;
+FunctionDefinition *FileParser::parseFunction() {
+	FunctionDefinition *def = new FunctionDefinition;
+
+	def->name = expectConsume(TOKEN_IDENTIFIER, "Expected Global Identifier").value;
 
 	expectConsume(TOKEN_COLON, "Expected Global Definition (::)");
 	expectConsume(TOKEN_COLON, "Expected Global Definition (::)");
@@ -77,21 +86,21 @@ ASTNode Parser::parseFunction() {
 		}
 		
 		Token varName = expectConsume(TOKEN_IDENTIFIER, "Expected variable name");
-		def.paramNames.push_back(varName.value);
+		def->paramNames.push_back(varName.value);
 		
 		expectConsume(TOKEN_COLON, "Expected colon after type");
 
-		def.paramTypes.push_back(parseType());
+		def->paramTypes.push_back(parseType());
 	}
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
 
 	expect(TOKEN_IDENTIFIER, "Expected return type");
-	def.returnType = parseType();
+	def->returnType = parseType();
 
 	if (tokens[index].type == TOKEN_LEFT_BRACE)
 	{
-		std::vector<ASTNode> body;
+		std::vector<ASTNode *> body;
 		index++;
 
 		while (tokens[index].type != TOKEN_RIGHT_BRACE)
@@ -99,7 +108,7 @@ ASTNode Parser::parseFunction() {
 			body.push_back(parseLocal());
 		}
 
-		def.body = body;
+		def->body = body;
 
 		expectConsume(TOKEN_RIGHT_BRACE, "Expected closing function brace");
 	}
@@ -107,24 +116,24 @@ ASTNode Parser::parseFunction() {
 	return def;
 }
 
-Type Parser::parseType()
+Type *FileParser::parseType()
 {
-	Type t;
-	t.pointerLevel = 0;
+	Type *t = new Type;
+	t->pointerLevel = 0;
 	
 	while (tokens[index].type == TOKEN_POINTER)
 	{
-		t.pointerLevel++;
+		t->pointerLevel++;
 		index++;
 	}
 	
 	auto tok = expectConsume(TOKEN_IDENTIFIER, "Expected type identifier");
-	t.name = tok.value;
+	t->name = tok.value;
 
 	return t;
 }
 
-ASTNode Parser::parseLocal()
+ASTNode *FileParser::parseLocal()
 {
 	switch (tokens[index].type)
 	{
@@ -132,16 +141,18 @@ ASTNode Parser::parseLocal()
 			return parseFunctionCall();
 
 		case TOKEN_KEYWORD_RETURN:
-			Return ret;
+			Return *ret = new Return;
 			expectConsume(TOKEN_KEYWORD_RETURN, "Expected the return keyword");
 			auto tok = expectConsume(TOKEN_INT_LITERAL, "Expected the return keyword");
-			ret.value = std::stoi(tok.value);
+			ret->value = std::stoi(tok.value);
+			expectConsume(TOKEN_SEMICOLON, "Expected semicolon after return");
 
 			return ret;
 	}
 
 	Token p = tokens[index];
 	FilePosition pos = p.position;
+
 	std::cerr << path.string() << ":"                                   \
 			<< pos.row << ":" << pos.col \
 			<< " > error: " << "Did not match any of the options when parsing local\n" \
@@ -150,12 +161,12 @@ ASTNode Parser::parseLocal()
 	exit(1);
 }
 
-ASTNode Parser::parseFunctionCall()
+FunctionCall *FileParser::parseFunctionCall()
 {
-	FunctionCall call;
+	FunctionCall *call = new FunctionCall;
 
 	auto tok = expectConsume(TOKEN_IDENTIFIER, "Provide an identifier for the function call");
-	call.name = tok.value;
+	call->name = tok.value;
 
 	
 	expectConsume(TOKEN_LEFT_PAREN, "Expected opening function paren");
@@ -180,6 +191,12 @@ ASTNode Parser::parseFunctionCall()
 		paramTypes.push_back(tok.value);
 	}
 	*/
+	auto stringToken = expectConsume(TOKEN_STRING_LITERAL, "Expected string literal");
+
+	StringLiteral *s = new StringLiteral;
+	s->value = stringToken.value;
+
+	call->params.push_back(s);
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
 	expectConsume(TOKEN_SEMICOLON, "Expected a semicolon");
@@ -187,7 +204,7 @@ ASTNode Parser::parseFunctionCall()
 	return call;
 }
 
-Token Parser::expectConsume(TokenType type, std::string errorMessage)
+Token FileParser::expectConsume(TokenType type, std::string errorMessage)
 {
 	expect(type, errorMessage);
 	auto tok = tokens[index];
@@ -195,39 +212,43 @@ Token Parser::expectConsume(TokenType type, std::string errorMessage)
 	return tok;
 }
 
-void Parser::expect(TokenType type, std::string errorMessage)
+void FileParser::expect(TokenType type, std::string errorMessage)
 {
 	if (eof() || tokens[index].type != type) 
 	{
 		Token p = tokens[index];
 		FilePosition pos = p.position;
+		std::string tokString = Lexer::tokenEnumToString[p.type];
 
 		std::cerr << path.string() << ":"                                   \
 			<< pos.row << ":" << pos.col \
 			<< " > error: " << errorMessage                                   \
-			<< " Received: " << p.value                           \
+			<< " Received: " << tokString \
 			<< std::endl;
 
 		exit(1);
 	}
 }
 
-bool Parser::eof()
+bool FileParser::eof()
 {
-	return tokens[index + 1].type == TOKEN_EOF;
+	return tokens[index].type == TOKEN_EOF;
 }
 
 void Parser::parse(std::filesystem::path p)
 {
-	this->path = p;
-	index = 0;
+	Lexer lex(p);
+	lex.display(lex.tokens());
 
-	Lexer lex(path);
-	tokens = lex.tokens();
-	lex.display(tokens);
+	FileParser fileParser(lex.tokens(), p, this);
+	auto ast = fileParser.parse();
 
-	auto ast = parse();
+	std::cout << "AST for file: " << p << "\n";
 
-	FileInfo file = { path, ast };
+	for (ASTNode *node: ast) {
+		node->print(0);
+	}
+
+	FileInfo file = { p, ast };
 	files.push_back(file);
 }
