@@ -1,26 +1,26 @@
 #ifndef LEXER_H
 #define LEXER_H
 
+#include <filesystem>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 enum TokenType
 {
     // Keywords
-    TOKEN_KEYWORD_FN,
     TOKEN_KEYWORD_RETURN,
     TOKEN_KEYWORD_FOR,
     TOKEN_KEYWORD_WHILE,
     TOKEN_KEYWORD_IF,
     TOKEN_KEYWORD_ELSE,
-    TOKEN_KEYWORD_LET,
     TOKEN_KEYWORD_TRUE,
     TOKEN_KEYWORD_FALSE,
     TOKEN_KEYWORD_NULL,
 
     TOKEN_KEYWORD_STRUCT,
-    TOKEN_KEYWORD_INCLUDE,
-
+    TOKEN_KEYWORD_IMPORT,
+ 
     // Arithmetic
     TOKEN_OPERATOR_PLUS,
     TOKEN_OPERATOR_MINUS,
@@ -85,7 +85,7 @@ class InputBuffer
 
 public:
     InputBuffer();
-    InputBuffer(std::string filename);
+    InputBuffer(std::filesystem::path filename);
 
     size_t position;
     FilePosition positionInFile;
@@ -95,21 +95,22 @@ public:
     bool eof();
     void skipWhitespace();
     void skipComment();
-    std::string filename;
+		std::filesystem::path filename;
     std::string buffer;
 };
 
 class Lexer
 {
 public:
-    Lexer(std::string filename);
+    Lexer(std::filesystem::path filename);
 
     Token next();
     Token peek();
 
     static std::unordered_map<std::string, TokenType> keywords;
     static std::unordered_map<TokenType, std::string> tokenEnumToString;
-    void dumpTokens();
+    void display(std::vector<Token> tokens);
+		std::vector<Token> tokens();
 
     InputBuffer input;
 

@@ -1,14 +1,20 @@
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/IRBuilder.h"
-
+#include <filesystem>
+#include <iostream>
 #include "lexer.h"
 #include "parser.h"
-#include "compiler.h"
-#include <string>
-#include <iostream>
 
-int main(int argc, char **argv)
+int main(int argc, char** argv) 
 {
-	Compiler compiler(argc, argv);
+	if (argc < 2) 
+	{
+			std::cerr << "Usage: " << argv[0] << " <filename>" << std::endl;
+			exit(1);
+	}
+
+	char* inputPath = argv[1];
+	std::filesystem::path filepath(inputPath);
+ 
+	Parser par(filepath);
 }
+
+
