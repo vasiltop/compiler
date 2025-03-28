@@ -29,6 +29,11 @@ struct FunctionCall : public ASTNode
 	std::vector<ASTNode> params;
 };
 
+struct Return : public ASTNode
+{
+	int value;
+};
+
 struct FileInfo
 {
 	std::filesystem::path path;
@@ -42,13 +47,20 @@ public:
 	void parse(std::filesystem::path path);
 
 private:
-	ASTNode parseGlobal();
 	bool eof();
 	void expect(TokenType type, std::string errorMessage);
-	void expectConsume(TokenType type, std::string errorMessage);
+	Token expectConsume(TokenType type, std::string errorMessage);
 	std::vector<ASTNode> parse();
 
+	// Node parsers
+	ASTNode parseGlobal();
+	ASTNode parseLocal();
+	ASTNode parseFunction();
+	ASTNode parseFunctionCall();
+	Type parseType();
+
 	std::vector<FileInfo> files;
+	std::filesystem::path baseDir;
 
 	// Current parse data
 	size_t index;

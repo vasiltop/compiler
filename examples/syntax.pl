@@ -1,11 +1,14 @@
-#import io // looks inside std/io
+#import "./other.pl"
 
-main :: () -> i32 {
+printf :: (s: ^u8) i32
+
+main :: () i32 {
 	test();
-	return 0;
+	// test2()
+	ret 0;
 }
 
-test :: () -> void {
+test :: () void {
 	printf("hello world");
 }
 

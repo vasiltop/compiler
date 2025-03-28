@@ -86,15 +86,11 @@ bool InputBuffer::eof()
 
 Lexer::Lexer(std::filesystem::path filename)
 {
-	if (!filename.is_absolute())
-	{
-		filename = std::filesystem::absolute(filename);
-	}
 	input = InputBuffer(filename);
 }
  
 std::unordered_map<std::string, TokenType> Lexer::keywords = {
-    {"return", TOKEN_KEYWORD_RETURN},
+    {"ret", TOKEN_KEYWORD_RETURN},
     {"for", TOKEN_KEYWORD_FOR},
     {"while", TOKEN_KEYWORD_WHILE},
     {"if", TOKEN_KEYWORD_IF},
