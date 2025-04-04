@@ -78,7 +78,21 @@ void Generator::generate()
 		}
 	}
 
-	module.print(llvm::outs(), nullptr);
+	std::string filename = "out.ll";
+
+	std::error_code errorCode;
+	llvm::raw_fd_ostream outFile(filename, errorCode);
+
+	if (errorCode)
+	{
+		llvm::errs() << "Error opening file '" << filename << "': " << errorCode.message() << "\n";
+		return;
+	}
+
+	module.print(outFile, nullptr);
+	outFile.close();
+
+	system("clang out.ll");
 }
 
 

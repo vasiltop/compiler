@@ -1,3 +1,5 @@
 bin
 build
 .vscode
+out.ll
+a.out
