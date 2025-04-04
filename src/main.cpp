@@ -2,6 +2,7 @@
 #include <iostream>
 #include "lexer.h"
 #include "parser.h"
+#include "generator.h"
 
 int main(int argc, char** argv) 
 {
@@ -15,6 +16,9 @@ int main(int argc, char** argv)
 	std::filesystem::path filepath(inputPath);
  
 	Parser par(filepath);
+
+	Generator gen(par);
+	gen.generate();
 }
 
 

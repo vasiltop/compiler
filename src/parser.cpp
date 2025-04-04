@@ -249,6 +249,8 @@ void Parser::parse(std::filesystem::path p)
 		node->print(0);
 	}
 
+	std::cout << std::endl;
+
 	FileInfo file = { p, ast };
 	files.push_back(file);
 }

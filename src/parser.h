@@ -112,8 +112,6 @@ class Parser
 public:
 	Parser(std::filesystem::path path);
 	void parse(std::filesystem::path path);
-
-private:
 	std::vector<FileInfo> files;
 };
 
