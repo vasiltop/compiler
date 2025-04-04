@@ -14,7 +14,7 @@ make build
 
 ```bash
 compiler <PATH>
-clang -o out output.ll
+./a.out
 ```
 
 ## Examples
@@ -24,7 +24,7 @@ Code examples can be found in the examples directory.
 ## Variables
 
 ```rust
-let message: u8^ = "Hello, world!";
+message: u8^ = "Hello, world!";
 ```
 
 ## Control Flow
@@ -45,42 +45,25 @@ while i < 10 {
 ## Functions
 
 ```rust
-fn add(a: i32, b: i32) -> i32 {
-    return a + b;
+add :: (a: i32, b: i32) i32 {
+    ret a + b;
 }
 
-fn main() -> i32 {
-    let added: i32 = add(4, 2);
-    return 0;
+main :: () i32 {
+    added := add(4, 2);
+    ret 0;
 }
 ```
 
 ## Structs
 ```rust
-struct Test {
+Test :: {
     a: i32,
+    b: i32
 }
 
-fn main() -> i32 {
-    let b: Test;
-
-    b.a = 30;
-
-    return b.a;
-}
-```
-
-## Memory
-
-```rust
-#include "std/memory.pl";
-
-fn main() -> i32 {
-    let a: i32^ = malloc(8);
-
-    a[0] = 5;
-    a[1] = 10;
-
-    return a[0];
+main :: () i32 {
+    b := Test { a: 1, b: 5 };
+    ret b.a;
 }
 ```
