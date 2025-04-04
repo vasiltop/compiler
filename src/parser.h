@@ -5,6 +5,12 @@
 #include <optional>
 #include <iostream>
 #include "lexer.h"
+#include "generator.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/IRBuilder.h"
+
+class Generator;
 
 struct ASTNode
 {
@@ -13,6 +19,12 @@ struct ASTNode
 	{
 		std::cout << "Unimplemented\n";
 	}
+
+	virtual llvm::Value* codegen(Generator *gen)
+	{
+		return nullptr;
+	}
+
 };
 
 static void indentPrint(int indent, const std::string &str)
@@ -52,6 +64,7 @@ struct FunctionDefinition : public ASTNode
 	Type *returnType;
 	std::optional<std::vector<ASTNode *>> body;
 
+	llvm::Value* codegen(Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Function: " + name);
@@ -80,6 +93,7 @@ struct FunctionCall : public ASTNode
 	std::string name;
 	std::vector<ASTNode *> params;
 
+	llvm::Value* codegen(Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Function Call: " + name);
@@ -95,6 +109,7 @@ struct Return : public ASTNode
 {
 	int value;
 
+	llvm::Value* codegen(Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Return: " + std::to_string(value));

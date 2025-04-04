@@ -10,4 +10,10 @@ main :: () i32 {
 
 test :: (s: ^u8) void {
 	printf("hello world");
+	test3("a");
+}
+
+test3 :: (s: ^u8) void {
+	printf("hello world");
+	test("a");
 }

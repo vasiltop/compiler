@@ -8,6 +8,9 @@
 #include "llvm/Support/raw_ostream.h"
 #include <map>
 
+class Parser;
+class Type;
+
 struct GType
 {
 	llvm::Type *elementType;
@@ -19,17 +22,17 @@ struct GType
 class Generator
 {
 public:
-	Generator(Parser parser);
+	Generator(Parser *parser);
 	void generate();
 
-private:
-	Parser parser;
 	llvm::LLVMContext ctx;
 	llvm::IRBuilder<> builder;
 	llvm::Module module;
-	
-	std::map<std::string, llvm::Function *> functions;
+
+private:
+	Parser *parser;
 	GType typeInfo(Type *type);
+	void generateFunctionDefinitions();
 };
 
 #endif

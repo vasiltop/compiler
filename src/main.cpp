@@ -17,7 +17,7 @@ int main(int argc, char** argv)
  
 	Parser par(filepath);
 
-	Generator gen(par);
+	Generator gen(&par);
 	gen.generate();
 }
 
