@@ -4,6 +4,7 @@
 FileParser::FileParser(std::vector<Token> tokens, std::filesystem::path path, Parser *parser) : tokens(tokens), index(0), path(path), parser(parser)
 {
 	baseDir = path.parent_path();
+	parser->parsedFiles.insert(path);
 }
 
 Parser::Parser(std::filesystem::path p)
@@ -14,6 +15,22 @@ Parser::Parser(std::filesystem::path p)
 	}
 	
 	parse(p);
+
+	for (auto &file: files)
+	{
+		for (auto included: file.includedFiles)
+		{
+			auto fs = functionSymbols(included);
+
+			for (std::string symbol: fs)
+			{
+				file.includedFunctionSymbols.insert(symbol);
+			}
+			std::cout << "SIZE: " << file.includedFunctionSymbols.size() << "\n";
+		}
+	}
+	
+	std::cout << "-------------------\n";
 }
 
 std::vector<ASTNode *> FileParser::parse()
@@ -24,7 +41,8 @@ std::vector<ASTNode *> FileParser::parse()
 	{
 		// Check if we need to import another file
 
-		if (tokens[index].type == TOKEN_HASHTAG) {
+		if (tokens[index].type == TOKEN_HASHTAG)
+		{
 			index++;
 			
 			expectConsume(TOKEN_KEYWORD_IMPORT, "Expected keyword import");
@@ -33,9 +51,15 @@ std::vector<ASTNode *> FileParser::parse()
 			std::filesystem::path path = tokens[index].value;
 			index++;
 
-			parser->parse(baseDir/path);
-		}
+			if (!parser->parsedFiles.count(baseDir/path))
+			{
+				//std::cout << "Adding new file: " << baseDir/path << "\n";
+				parser->parsedFiles.insert(baseDir/path);
+				parser->parse(baseDir/path);
+			}
 
+			includedFiles.insert(baseDir/path);
+		}
 		nodes.push_back(parseGlobal());
 	}
 
@@ -69,6 +93,7 @@ FunctionDefinition *FileParser::parseFunction() {
 	FunctionDefinition *def = new FunctionDefinition;
 
 	def->name = expectConsume(TOKEN_IDENTIFIER, "Expected Global Identifier").value;
+	functionSymbols.insert(def->name);
 
 	expectConsume(TOKEN_COLON, "Expected Global Definition (::)");
 	expectConsume(TOKEN_COLON, "Expected Global Definition (::)");
@@ -153,12 +178,33 @@ ASTNode *FileParser::parseLocal()
 	Token p = tokens[index];
 	FilePosition pos = p.position;
 
-	std::cerr << path.string() << ":"                                   \
-			<< pos.row << ":" << pos.col \
-			<< " > error: " << "Did not match any of the options when parsing local\n" \
-			<< " Received: " << p.value                           \
+	std::cerr << path.string() << ":"
+			<< pos.row << ":" << pos.col
+			<< " > error: " << "Did not match any of the options when parsing local\n"
+			<< " Received: " << p.value
 			<< std::endl;
 	exit(1);
+}
+
+bool FileInfo::functionIncluded(std::string name)
+{
+	std::cout << "Searching for " << name << " In file: " << path << std::endl;
+
+	std::cout << "In this file: " << std::endl;
+	for (auto s: functionSymbols)
+	{
+		std::cout << s << std::endl;
+		if (s == name) return true;
+	}
+
+	std::cout << "Included: " << includedFunctionSymbols.size() << std::endl;
+	for (auto s: includedFunctionSymbols)
+	{
+		std::cout << s << std::endl;
+		if (s == name) return true;
+	}
+
+	return false;
 }
 
 FunctionCall *FileParser::parseFunctionCall()
@@ -168,7 +214,6 @@ FunctionCall *FileParser::parseFunctionCall()
 	auto tok = expectConsume(TOKEN_IDENTIFIER, "Provide an identifier for the function call");
 	call->name = tok.value;
 
-	
 	expectConsume(TOKEN_LEFT_PAREN, "Expected opening function paren");
 
 	// Parse arguments
@@ -220,10 +265,10 @@ void FileParser::expect(TokenType type, std::string errorMessage)
 		FilePosition pos = p.position;
 		std::string tokString = Lexer::tokenEnumToString[p.type];
 
-		std::cerr << path.string() << ":"                                   \
-			<< pos.row << ":" << pos.col \
-			<< " > error: " << errorMessage                                   \
-			<< " Received: " << tokString \
+		std::cerr << path.string() << ":"
+			<< pos.row << ":" << pos.col
+			<< " > error: " << errorMessage
+			<< " Received: " << tokString
 			<< std::endl;
 
 		exit(1);
@@ -235,22 +280,65 @@ bool FileParser::eof()
 	return tokens[index].type == TOKEN_EOF;
 }
 
+bool Parser::isParsed(std::filesystem::path path)
+{
+	for (auto file: files)
+	{	
+		std::cout << "Comparing" << std::endl;
+		std::cout << file.path << std::endl;
+		std::cout << path << std::endl;
+		std::cout << (file.path == path) << std::endl;
+
+		if (file.path == path)
+		{
+			return true;
+		}
+		
+	}
+
+	return false;
+}
+
+std::set<std::string> Parser::functionSymbols(std::filesystem::path path)
+{
+
+	for (auto file: files)
+	{
+		if (file.path == path)
+		{
+			/*
+			std::cout << "Function Symbols for: " << path << "\n";
+
+			for (auto f: file.functionSymbols)
+			{
+				std::cout << f << "\n";
+			}
+			*/
+
+			return file.functionSymbols;
+		}
+	}
+
+	return {};
+}
+
 void Parser::parse(std::filesystem::path p)
 {
+	//std::cout << "Beginning to parse: " << p << "\n";
 	Lexer lex(p);
-	lex.display(lex.tokens());
+	//lex.display(lex.tokens());
 
 	FileParser fileParser(lex.tokens(), p, this);
 	auto ast = fileParser.parse();
 
+	/*
 	std::cout << "AST for file: " << p << "\n";
-
 	for (ASTNode *node: ast) {
 		node->print(0);
 	}
-
 	std::cout << std::endl;
+	*/
 
-	FileInfo file = { p, ast };
+	FileInfo file = { p, ast, fileParser.functionSymbols, fileParser.includedFiles, {}};
 	files.push_back(file);
 }

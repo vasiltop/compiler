@@ -56,6 +56,7 @@ main :: () i32 {
 ```
 
 ## Structs
+
 ```rust
 Test :: {
     a: i32,

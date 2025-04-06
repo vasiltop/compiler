@@ -16,8 +16,8 @@ int main(int argc, char** argv)
 	std::filesystem::path filepath(inputPath);
  
 	Parser par(filepath);
-
 	Generator gen(&par);
+
 	gen.generate();
 }
 

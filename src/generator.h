@@ -8,6 +8,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include <map>
 
+class FileInfo;
 class Parser;
 class Type;
 
@@ -28,6 +29,7 @@ public:
 	llvm::LLVMContext ctx;
 	llvm::IRBuilder<> builder;
 	llvm::Module module;
+	FileInfo *currentFile;
 
 private:
 	Parser *parser;
