@@ -126,25 +126,21 @@ struct FileInfo
 	std::filesystem::path path;
 	std::vector<ASTNode *> nodes;
 	std::set<std::string> functionSymbols;
-	std::set<std::string> includedFiles;
-
-	std::set<std::string> includedFunctionSymbols;
-
-	bool functionIncluded(std::string name);
 };
 
 class Parser
 {
 public:
-	Parser(std::filesystem::path path);
+	Parser(std::filesystem::path path, std::filesystem::path compilerPath);
+
 	void parse(std::filesystem::path path);
+	bool isParsed(std::filesystem::path path);
+
 	std::vector<FileInfo> files;
 	std::set<std::string> parsedFiles;
-
-	bool isParsed(std::filesystem::path path);
 	std::set<std::string> functionSymbols(std::filesystem::path path);
-	
 	std::map<std::filesystem::path, std::string> pathToModule;
+	std::filesystem::path compilerPath;
 
 };
 
@@ -154,14 +150,13 @@ public:
 	FileParser(std::vector<Token> tokens, std::filesystem::path path, Parser *parser);
 	std::vector<ASTNode *> parse();
 	std::set<std::string> functionSymbols;
-	std::set<std::string> includedFunctionSymbols;
-	std::set<std::string> includedFiles;
 
 private:
 	Parser *parser;
 	bool eof();
 	void expect(TokenType type, std::string errorMessage);
 	Token expectConsume(TokenType type, std::string errorMessage);
+	std::filesystem::path resolveImportPath(std::filesystem::path p);
 
 	size_t index;
 	std::vector<Token> tokens;

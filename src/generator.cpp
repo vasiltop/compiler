@@ -120,9 +120,15 @@ llvm::Value* Return::codegen(Generator *gen)
 
 llvm::Value* FunctionCall::codegen(Generator *gen)
 {
-	if (!gen->currentFile->functionIncluded(name))
+	if (!gen->functionSymbols.count(moduleName))
 	{
-		std::cerr << "function does not exist: " << name;
+		std::cerr << "module does not exist: " << moduleName << "\n";
+		exit(1);
+	}
+
+	if (!gen->functionSymbols[moduleName].count(name))
+	{
+		std::cerr << "function does not exist: " << name << "\n";
 		exit(1);
 	}
 

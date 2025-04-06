@@ -7,7 +7,7 @@ FileParser::FileParser(std::vector<Token> tokens, std::filesystem::path path, Pa
 	parser->parsedFiles.insert(path);
 }
 
-Parser::Parser(std::filesystem::path p)
+Parser::Parser(std::filesystem::path p, std::filesystem::path compilerPath): compilerPath(compilerPath)
 {
 	if (!p.is_absolute())
 	{
@@ -15,20 +15,22 @@ Parser::Parser(std::filesystem::path p)
 	}
 	
 	parse(p);
+}
 
-	for (auto &file: files)
-	{
-		for (auto included: file.includedFiles)
-		{
-			auto fs = functionSymbols(included);
+std::filesystem::path FileParser::resolveImportPath(std::filesystem::path p)
+{
+	std::string asString = p; 
 
-			for (std::string symbol: fs)
-			{
-				file.includedFunctionSymbols.insert(symbol);
-			}
-		}
+	if (asString.find("std:") == 0) {
+		std::filesystem::path compilerDir = "/opt/compiler/";
+
+		std::string relPath = asString.substr(4);
+		std::filesystem::path fullPath = compilerDir / "std" / relPath;
+
+		return fullPath;
 	}
-	
+
+	return p;
 }
 
 std::vector<ASTNode *> FileParser::parse()
@@ -45,17 +47,17 @@ std::vector<ASTNode *> FileParser::parse()
 		{
 			expectConsume(TOKEN_KEYWORD_IMPORT, "Expected keyword import");
 			std::filesystem::path path = expectConsume(TOKEN_STRING_LITERAL, "Expected file to import").value;
+			path = resolveImportPath(path);
 
 			if (!parser->parsedFiles.count(baseDir/path))
 			{
-				//std::cout << "Adding new file: " << baseDir/path << "\n";
 				parser->parsedFiles.insert(baseDir/path);
 				parser->parse(baseDir/path);
 			}
 
-			includedFiles.insert(baseDir/path);
 			continue;
 		}
+
 		nodes.push_back(parseGlobal());
 	}
 
@@ -180,21 +182,6 @@ ASTNode *FileParser::parseLocal()
 			<< " Received: " << p.value
 			<< std::endl;
 	exit(1);
-}
-
-bool FileInfo::functionIncluded(std::string name)
-{
-	for (auto s: functionSymbols)
-	{
-		if (s == name) return true;
-	}
-
-	for (auto s: includedFunctionSymbols)
-	{
-		if (s == name) return true;
-	}
-
-	return false;
 }
 
 FunctionCall *FileParser::parseFunctionCall()
@@ -330,6 +317,6 @@ void Parser::parse(std::filesystem::path p)
 	std::cout << std::endl;
 	*/
 
-	FileInfo file = { p, ast, fileParser.functionSymbols, fileParser.includedFiles, {}};
+	FileInfo file = { p, ast, fileParser.functionSymbols };
 	files.push_back(file);
 }

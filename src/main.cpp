@@ -14,8 +14,15 @@ int main(int argc, char** argv)
 
 	char* inputPath = argv[1];
 	std::filesystem::path filepath(inputPath);
+	std::filesystem::path compilerPath(argv[0]);
+
+	
+	if (!compilerPath.is_absolute())
+		compilerPath = std::filesystem::absolute(compilerPath);
  
-	Parser par(filepath);
+	std::cout << compilerPath << "\n";
+
+	Parser par(filepath, compilerPath);
 	Generator gen(&par);
 
 	gen.generate();
