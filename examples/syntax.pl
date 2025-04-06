@@ -1,16 +1,15 @@
+module "entry"
+import "other.pl"
+
 printf :: (s: ^u8) i32
 
-test3 :: () void {
-
-}
-
 main :: () i32 {
-	test("test");
+	entry.test("test");
 	ret 0;
 }
 
 test :: (s: ^u8) void {
-	printf("hello world\n");
+	entry.printf("main file\n");
+	other.test("test");
 }
 
-#import "other.pl"

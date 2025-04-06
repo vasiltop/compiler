@@ -10,6 +10,7 @@ enum TokenType
 {
     // Keywords
     TOKEN_KEYWORD_RETURN,
+    TOKEN_KEYWORD_EXTERN,
     TOKEN_KEYWORD_FOR,
     TOKEN_KEYWORD_WHILE,
     TOKEN_KEYWORD_IF,
@@ -20,6 +21,7 @@ enum TokenType
 
     TOKEN_KEYWORD_STRUCT,
     TOKEN_KEYWORD_IMPORT,
+    TOKEN_KEYWORD_MODULE,
  
     // Arithmetic
     TOKEN_OPERATOR_PLUS,

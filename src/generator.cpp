@@ -41,15 +41,13 @@ void Generator::generateFunctionDefinitions()
 {
 	for (auto fileInfo: parser->files)
 	{
+		std::string moduleName = parser->pathToModule[fileInfo.path];
+
 		for (auto node: fileInfo.nodes)
 		{
 			if (dynamic_cast<FunctionDefinition*>(node) != nullptr)
 			{
 				auto func = static_cast<FunctionDefinition *>(node);
-
-				llvm::Function *f= module.getFunction(func->name);
-				if (f != nullptr) continue;
-	
 				std::vector<llvm::Type *> paramTypes;
 
 				for (auto type: func->paramTypes)
@@ -60,7 +58,7 @@ void Generator::generateFunctionDefinitions()
 				llvm::Type *returnType = typeInfo(func->returnType).type(ctx);
 				llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, paramTypes, false);
 
-				llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, func->name, module);
+				functionSymbols[moduleName][func->name] = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, func->name, module);
 			}
 		}
 	}
@@ -100,7 +98,7 @@ llvm::Value* FunctionDefinition::codegen(Generator *gen)
 {
 	if (!body) return nullptr;
 
-	llvm::Function *func = gen->module.getFunction(name);
+	llvm::Function *func = gen->functionSymbols[moduleName][name];
 	llvm::BasicBlock *entry = llvm::BasicBlock::Create(gen->module.getContext(), "entry", func);	
 	gen->builder.SetInsertPoint(entry);
 
@@ -128,7 +126,8 @@ llvm::Value* FunctionCall::codegen(Generator *gen)
 		exit(1);
 	}
 
-	llvm::Function *func = gen->module.getFunction(name);
+	// gen->displayFunctionSymbols();
+	llvm::Function *func = gen->functionSymbols[moduleName][name];
 	std::vector<llvm::Value *> callArgs;
 
 	for (auto arg : params)
@@ -138,4 +137,33 @@ llvm::Value* FunctionCall::codegen(Generator *gen)
 	}
 
 	return gen->builder.CreateCall(func, callArgs);
+}
+
+void Generator::displayFunctionSymbols()
+{
+	 std::cout << "Function Symbols Map Contents:\n";
+	 std::cout << "=============================\n";
+
+	 // Iterate through outer map (module names)
+	 for (const auto& modulePair : functionSymbols) {
+		 const std::string& moduleName = modulePair.first;
+		 std::cout << "Module: " << moduleName << "\n";
+
+		 // Iterate through inner map (function names to Function*)
+		 for (const auto& functionPair : modulePair.second) {
+			 const std::string& functionName = functionPair.first;
+			 llvm::Function* func = functionPair.second;
+
+			 std::cout << "  Function: " << functionName 
+				 << " (" << (void*)func << ")";
+
+			 // If you want to print more details about the function
+			 if (func) {
+				 std::cout << " - " << func->getName().str()
+					 << ", args: " << func->arg_size();
+			 }
+			 std::cout << "\n";
+		 }
+	 }
+	 std::cout << "=============================\n";
 }

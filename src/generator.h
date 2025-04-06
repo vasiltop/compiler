@@ -31,6 +31,8 @@ public:
 	llvm::Module module;
 	FileInfo *currentFile;
 
+	void displayFunctionSymbols();
+	std::map<std::string, std::map<std::string, llvm::Function *>> functionSymbols;
 private:
 	Parser *parser;
 	GType typeInfo(Type *type);

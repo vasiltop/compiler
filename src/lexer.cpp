@@ -99,7 +99,9 @@ std::unordered_map<std::string, TokenType> Lexer::keywords = {
     {"false", TOKEN_BOOL_LITERAL},
     {"null", TOKEN_KEYWORD_NULL},
     {"struct", TOKEN_KEYWORD_STRUCT},
-    {"import", TOKEN_KEYWORD_IMPORT}};
+    {"extern", TOKEN_KEYWORD_EXTERN},
+    {"import", TOKEN_KEYWORD_IMPORT},
+    {"module", TOKEN_KEYWORD_MODULE}};
 
 std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_KEYWORD_RETURN, "TOKEN_KEYWORD"},
@@ -111,7 +113,9 @@ std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_KEYWORD_FALSE, "TOKEN_KEYWORD_FALSE"},
     {TOKEN_KEYWORD_NULL, "TOKEN_KEYWORD_NULL"},
     {TOKEN_KEYWORD_STRUCT, "TOKEN_KEYWORD_STRUCT"},
+    {TOKEN_KEYWORD_EXTERN, "TOKEN_KEYWORD_EXTERN"},
     {TOKEN_KEYWORD_IMPORT, "TOKEN_KEYWORD_IMPORT"},
+    {TOKEN_KEYWORD_MODULE, "TOKEN_KEYWORD_MODULE"},
     {TOKEN_OPERATOR_PLUS, "TOKEN_OPERATOR_PLUS"},
     {TOKEN_OPERATOR_MINUS, "TOKEN_OPERATOR_MINUS"},
     {TOKEN_OPERATOR_MUL, "TOKEN_OPERATOR_MUL"},

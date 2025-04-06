@@ -5,6 +5,7 @@
 #include <optional>
 #include <iostream>
 #include <set>
+#include <map>
 
 #include "lexer.h"
 #include "generator.h"
@@ -60,6 +61,7 @@ struct StringLiteral : public ASTNode
 
 struct FunctionDefinition : public ASTNode
 {
+	std::string moduleName;
 	std::string name;
 	std::vector<std::string> paramNames;
 	std::vector<Type *> paramTypes;
@@ -92,6 +94,7 @@ struct FunctionDefinition : public ASTNode
 
 struct FunctionCall : public ASTNode
 {
+	std::string moduleName;
 	std::string name;
 	std::vector<ASTNode *> params;
 
@@ -140,6 +143,9 @@ public:
 
 	bool isParsed(std::filesystem::path path);
 	std::set<std::string> functionSymbols(std::filesystem::path path);
+	
+	std::map<std::filesystem::path, std::string> pathToModule;
+
 };
 
 class FileParser

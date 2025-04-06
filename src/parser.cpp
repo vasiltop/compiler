@@ -34,20 +34,17 @@ Parser::Parser(std::filesystem::path p)
 std::vector<ASTNode *> FileParser::parse()
 {
 	std::vector<ASTNode *> nodes;
-	
+
+	expectConsume(TOKEN_KEYWORD_MODULE, "Expected keyword module");
+	std::string name = expectConsume(TOKEN_STRING_LITERAL, "Expected module name").value;
+	parser->pathToModule[path] = name;
+
 	while (!eof())
 	{
-		// Check if we need to import another file
-
-		if (tokens[index].type == TOKEN_HASHTAG)
+		if (tokens[index].type == TOKEN_KEYWORD_IMPORT)
 		{
-			index++;
-			
 			expectConsume(TOKEN_KEYWORD_IMPORT, "Expected keyword import");
-
-			expect(TOKEN_STRING_LITERAL, "Expected file to import");
-			std::filesystem::path path = tokens[index].value;
-			index++;
+			std::filesystem::path path = expectConsume(TOKEN_STRING_LITERAL, "Expected file to import").value;
 
 			if (!parser->parsedFiles.count(baseDir/path))
 			{
@@ -59,7 +56,6 @@ std::vector<ASTNode *> FileParser::parse()
 			includedFiles.insert(baseDir/path);
 			continue;
 		}
-
 		nodes.push_back(parseGlobal());
 	}
 
@@ -80,10 +76,10 @@ ASTNode *FileParser::parseGlobal()
 	Token p = tokens[index];
 	FilePosition pos = p.position;
 
-	std::cerr << path.string() << ":"                                   \
-			<< pos.row << ":" << pos.col \
-			<< " > error: " << "Did not match any of the options when parsing global\n" \
-			<< " Received: " << p.value                           \
+	std::cerr << path.string() << ":"
+			<< pos.row << ":" << pos.col
+			<< " > error: " << "Did not match any of the options when parsing global\n"
+			<< " Received: " << p.value
 			<< std::endl;
 	exit(1);
 
@@ -91,6 +87,7 @@ ASTNode *FileParser::parseGlobal()
 
 FunctionDefinition *FileParser::parseFunction() {
 	FunctionDefinition *def = new FunctionDefinition;
+	def->moduleName = parser->pathToModule[path];
 
 	def->name = expectConsume(TOKEN_IDENTIFIER, "Expected Global Identifier").value;
 	functionSymbols.insert(def->name);
@@ -101,7 +98,6 @@ FunctionDefinition *FileParser::parseFunction() {
 	expectConsume(TOKEN_LEFT_PAREN, "Expected opening function paren");
 
 	// Parse arguments
-	
 	while (tokens[index].type != TOKEN_RIGHT_PAREN)
 	{
 		if (tokens[index].type == TOKEN_COMMA)
@@ -205,8 +201,9 @@ FunctionCall *FileParser::parseFunctionCall()
 {
 	FunctionCall *call = new FunctionCall;
 
-	auto tok = expectConsume(TOKEN_IDENTIFIER, "Provide an identifier for the function call");
-	call->name = tok.value;
+	call->moduleName = expectConsume(TOKEN_IDENTIFIER, "Provide a module for the function call").value;
+	expectConsume(TOKEN_DOT, "Expected dot after module name");
+	call->name = expectConsume(TOKEN_IDENTIFIER, "Provide an identifier for the function call").value;
 
 	expectConsume(TOKEN_LEFT_PAREN, "Expected opening function paren");
 
