@@ -26,11 +26,9 @@ Parser::Parser(std::filesystem::path p)
 			{
 				file.includedFunctionSymbols.insert(symbol);
 			}
-			std::cout << "SIZE: " << file.includedFunctionSymbols.size() << "\n";
 		}
 	}
 	
-	std::cout << "-------------------\n";
 }
 
 std::vector<ASTNode *> FileParser::parse()
@@ -59,7 +57,9 @@ std::vector<ASTNode *> FileParser::parse()
 			}
 
 			includedFiles.insert(baseDir/path);
+			continue;
 		}
+
 		nodes.push_back(parseGlobal());
 	}
 
@@ -188,19 +188,13 @@ ASTNode *FileParser::parseLocal()
 
 bool FileInfo::functionIncluded(std::string name)
 {
-	std::cout << "Searching for " << name << " In file: " << path << std::endl;
-
-	std::cout << "In this file: " << std::endl;
 	for (auto s: functionSymbols)
 	{
-		std::cout << s << std::endl;
 		if (s == name) return true;
 	}
 
-	std::cout << "Included: " << includedFunctionSymbols.size() << std::endl;
 	for (auto s: includedFunctionSymbols)
 	{
-		std::cout << s << std::endl;
 		if (s == name) return true;
 	}
 

@@ -1,21 +1,7 @@
 #include "generator.h"
 #include "parser.h"
 
-Generator::Generator(Parser *parser): parser(parser), builder(ctx), module("main", ctx) {
-
-	for (auto fileInfo: parser->files)
-	{
-		std::cout << "FILE: " << fileInfo.path << "\n";
-		std::cout << "SIZE: " << fileInfo.includedFunctionSymbols.size() << "\n";
-
-		for (auto i: fileInfo.includedFunctionSymbols)
-		{
-			std::cout << i << "\n";
-		}
-	}
-
-	std::cout << "--------------------\n";
-}
+Generator::Generator(Parser *parser): parser(parser), builder(ctx), module("main", ctx) {}
 
 llvm::Type *GType::type(llvm::LLVMContext &ctx)
 {
@@ -87,8 +73,6 @@ void Generator::generate()
 	for (auto fileInfo: parser->files)
 	{
 		currentFile = &fileInfo;
-		std::cout << "FILE: " << currentFile->path << "\n";
-		std::cout << "SIZE: " << currentFile->includedFiles.size() << "\n";
 		for (auto node: fileInfo.nodes)
 		{
 			node->codegen(this);
