@@ -1,10 +1,8 @@
 module "entry"
-
-import "std:io.pl"
+import "std:io"
 
 main :: () i32 {
-	io.print("a");
-	ret 0;
+	io.print(("a" + "b") * "c");
+
+	return 0;
 }
-
-

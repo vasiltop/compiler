@@ -49,16 +49,6 @@ struct Type : public ASTNode
 	}
 };
 
-struct StringLiteral : public ASTNode
-{
-	std::string value;
-
-	void print(int level) override
-	{
-		indentPrint(level, "String: " + value);
-	}
-};
-
 struct FunctionDefinition : public ASTNode
 {
 	std::string moduleName;
@@ -121,6 +111,69 @@ struct Return : public ASTNode
 	}
 };
 
+struct StringLiteral: public ASTNode
+{
+	std::string value;
+
+	StringLiteral(const std::string& val) : value(val) {}
+	void print(int level) override
+	{
+		indentPrint(level, "StringLiteral: " + value);
+	}
+};
+
+struct IntLiteral: public ASTNode
+{
+	int value;
+
+  IntLiteral(int val) : value(val) {}
+	void print(int level) override
+	{
+		indentPrint(level, "IntLiteral: " + std::to_string(value));
+	}
+};
+
+struct BoolLiteral: public ASTNode
+{
+	bool value;
+
+	BoolLiteral(bool val) : value(val) {}
+	void print(int level) override
+	{
+		indentPrint(level, "BoolLiteral: " + std::to_string(value));
+	}
+};
+
+struct BinaryExpr : public ASTNode
+{
+	Token op;
+	ASTNode *lhs;
+	ASTNode *rhs;
+
+	BinaryExpr(Token op, ASTNode* left, ASTNode* right)
+		: op(op), lhs(left), rhs(right) {}
+	void print(int level) override
+	{
+		indentPrint(level, "BinaryExpr: " + op.value);
+		lhs->print(level + 2);
+		rhs->print(level + 2);
+	}
+};
+
+struct UnaryExpr: public ASTNode
+{
+	Token op;
+	ASTNode *expr;
+
+	UnaryExpr(Token op, ASTNode* expr)
+    : op(op), expr(expr) {}
+	void print(int level) override
+	{
+		indentPrint(level, "UnaryExpr: " + op.value);
+		expr->print(level + 2);
+	}
+};
+
 struct FileInfo
 {
 	std::filesystem::path path;
@@ -166,6 +219,9 @@ private:
 	// Node parsers
 	ASTNode *parseGlobal();
 	ASTNode *parseLocal();
+	ASTNode *parseExpression(int precedence = 0);
+	ASTNode *parseUnary();
+	ASTNode *parsePrimary();
 	FunctionDefinition *parseFunction();
 	FunctionCall *parseFunctionCall();
 	Type *parseType();

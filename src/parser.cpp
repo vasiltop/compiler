@@ -19,7 +19,8 @@ Parser::Parser(std::filesystem::path p, std::filesystem::path compilerPath): com
 
 std::filesystem::path FileParser::resolveImportPath(std::filesystem::path p)
 {
-	std::string asString = p; 
+	std::string asString = p;
+	asString += ".pl";
 
 	if (asString.find("std:") == 0) {
 		std::filesystem::path compilerDir = "/opt/compiler/";
@@ -196,7 +197,6 @@ FunctionCall *FileParser::parseFunctionCall()
 
 	// Parse arguments
 
-	/*
 	while (tokens[index].type != TOKEN_RIGHT_PAREN)
 	{
 		if (tokens[index].type == TOKEN_COMMA)
@@ -204,27 +204,105 @@ FunctionCall *FileParser::parseFunctionCall()
 			index++;
 			continue;
 		}
-		
-		auto tok = expectConsume(TOKEN_IDENTIFIER, "Expected variable name");
-		paramNames.push_back(tok.value);
-		
-		expectConsume(TOKEN_COLON, "Expected colon after type");
 
-		auto tok = expect(TOKEN_IDENTIFIER, "Expected variable type");
-		paramTypes.push_back(tok.value);
+		call->params.push_back(parseExpression());
 	}
-	*/
-	auto stringToken = expectConsume(TOKEN_STRING_LITERAL, "Expected string literal");
-
-	StringLiteral *s = new StringLiteral;
-	s->value = stringToken.value;
-
-	call->params.push_back(s);
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
 	expectConsume(TOKEN_SEMICOLON, "Expected a semicolon");
 
 	return call;
+}
+
+int getPrecedence(TokenType type)
+{
+    switch (type)
+    {
+    case TOKEN_OPERATOR_MUL:
+    case TOKEN_OPERATOR_DIV:
+    case TOKEN_OPERATOR_MOD:
+        return 5;
+    case TOKEN_OPERATOR_PLUS:
+    case TOKEN_OPERATOR_MINUS:
+        return 4;
+    case TOKEN_OPERATOR_LESS:
+    case TOKEN_OPERATOR_GREATER:
+    case TOKEN_OPERATOR_LESS_EQUAL:
+    case TOKEN_OPERATOR_GREATER_EQUAL:
+        return 3;
+    case TOKEN_OPERATOR_NOT_EQUAL:
+    case TOKEN_OPERATOR_EQUAL:
+        return 2;
+    case TOKEN_OPERATOR_AND:
+        return 1;
+    case TOKEN_OPERATOR_OR:
+        return 0;
+    default:
+        return -1;
+    }
+}
+
+ASTNode *FileParser::parseExpression(int precedence)
+{
+	auto left = parseUnary();
+
+	for (;;)
+	{
+		Token tok = tokens[index];
+		int currentPrecedence = getPrecedence(tok.type);
+
+		if (currentPrecedence < precedence)
+		{
+			break;
+		}
+
+		index++;
+		
+		auto right = parseExpression(currentPrecedence + 1);
+
+		left = new BinaryExpr(tok, left, right);
+	}
+
+	return left;
+}
+
+ASTNode *FileParser::parseUnary()
+{
+	Token tok = tokens[index];
+
+	if (tok.type == TOKEN_OPERATOR_NOT || tok.type == TOKEN_OPERATOR_MINUS)
+	{
+		index++;
+		auto expr = parseUnary();
+		return new UnaryExpr(tok, expr);
+	}
+
+	return parsePrimary();
+}
+
+ASTNode *FileParser::parsePrimary()
+{
+	auto cur = tokens[index];
+	
+	switch (cur.type)
+	{
+		case TOKEN_INT_LITERAL:
+			index++;
+			return new IntLiteral(std::stoi(cur.value));
+		case TOKEN_STRING_LITERAL:
+			index++;
+			return new StringLiteral(cur.value);
+		case TOKEN_BOOL_LITERAL:
+			index++;
+			return new BoolLiteral(cur.value == "true");
+		case TOKEN_LEFT_PAREN:
+			index++;
+			auto expr = parseExpression();
+			expectConsume(TOKEN_RIGHT_PAREN, "Expected )");
+			return expr;
+	}
+
+	return nullptr;
 }
 
 Token FileParser::expectConsume(TokenType type, std::string errorMessage)
@@ -284,15 +362,6 @@ std::set<std::string> Parser::functionSymbols(std::filesystem::path path)
 	{
 		if (file.path == path)
 		{
-			/*
-			std::cout << "Function Symbols for: " << path << "\n";
-
-			for (auto f: file.functionSymbols)
-			{
-				std::cout << f << "\n";
-			}
-			*/
-
 			return file.functionSymbols;
 		}
 	}
@@ -309,13 +378,11 @@ void Parser::parse(std::filesystem::path p)
 	FileParser fileParser(lex.tokens(), p, this);
 	auto ast = fileParser.parse();
 
-	/*
 	std::cout << "AST for file: " << p << "\n";
 	for (ASTNode *node: ast) {
 		node->print(0);
 	}
 	std::cout << std::endl;
-	*/
 
 	FileInfo file = { p, ast, fileParser.functionSymbols };
 	files.push_back(file);

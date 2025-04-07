@@ -89,8 +89,9 @@ Lexer::Lexer(std::filesystem::path filename)
 	input = InputBuffer(filename);
 }
  
-std::unordered_map<std::string, TokenType> Lexer::keywords = {
-    {"ret", TOKEN_KEYWORD_RETURN},
+std::unordered_map<std::string, TokenType> Lexer::keywords = 
+{
+    {"return", TOKEN_KEYWORD_RETURN},
     {"for", TOKEN_KEYWORD_FOR},
     {"while", TOKEN_KEYWORD_WHILE},
     {"if", TOKEN_KEYWORD_IF},
@@ -101,10 +102,11 @@ std::unordered_map<std::string, TokenType> Lexer::keywords = {
     {"struct", TOKEN_KEYWORD_STRUCT},
     {"extern", TOKEN_KEYWORD_EXTERN},
     {"import", TOKEN_KEYWORD_IMPORT},
-    {"module", TOKEN_KEYWORD_MODULE}};
+    {"module", TOKEN_KEYWORD_MODULE}
+};
 
 std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
-    {TOKEN_KEYWORD_RETURN, "TOKEN_KEYWORD"},
+    {TOKEN_KEYWORD_RETURN, "TOKEN_KEYWORD_RETURN"},
     {TOKEN_KEYWORD_FOR, "TOKEN_KEYWORD_FOR"},
     {TOKEN_KEYWORD_WHILE, "TOKEN_KEYWORD_WHILE"},
     {TOKEN_KEYWORD_IF, "TOKEN_KEYWORD_IF"},
