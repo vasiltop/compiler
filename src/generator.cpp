@@ -102,6 +102,14 @@ llvm::Value* FunctionDefinition::codegen(Generator *gen)
 	llvm::BasicBlock *entry = llvm::BasicBlock::Create(gen->module.getContext(), "entry", func);	
 	gen->builder.SetInsertPoint(entry);
 
+	unsigned i = 0;
+
+	for (auto &arg: func->args())
+	{
+		llvm::AllocaInst *alloc = gen->builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
+		gen->builder.CreateStore(&arg, alloc);
+	}
+
 	for (auto node : body.value())
 	{
 		node->codegen(gen);
@@ -111,6 +119,80 @@ llvm::Value* FunctionDefinition::codegen(Generator *gen)
 		gen->builder.CreateRetVoid();
 
 	return func;
+}
+
+llvm::Value* StringLiteral::codegen(Generator *gen)
+{
+	return gen->builder.CreateGlobalStringPtr(value);	
+}
+
+llvm::Value* IntLiteral::codegen(Generator *gen)
+{
+	return gen->builder.getInt32(value);
+}
+
+llvm::Value* BoolLiteral::codegen(Generator *gen)
+{
+	return gen->builder.getInt1(value);
+}
+
+llvm::Value *BinaryExpr::codegen(Generator *gen)
+{
+	llvm::Value *lhsValue = lhs->codegen(gen);
+	llvm::Value *rhsValue = rhs->codegen(gen);
+
+	if (!lhsValue || !rhsValue) return nullptr;
+
+	switch (op.type)
+	{
+		case TOKEN_OPERATOR_PLUS:
+        return gen->builder.CreateAdd(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_MINUS:
+        return gen->builder.CreateSub(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_MUL:
+        return gen->builder.CreateMul(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_DIV:
+        return gen->builder.CreateSDiv(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_EQUAL:
+        return gen->builder.CreateICmpEQ(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_NOT_EQUAL:
+        return gen->builder.CreateICmpNE(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_LESS:
+        return gen->builder.CreateICmpSLT(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_GREATER:
+        return gen->builder.CreateICmpSGT(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_LESS_EQUAL:
+        return gen->builder.CreateICmpSLE(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_GREATER_EQUAL:
+        return gen->builder.CreateICmpSGE(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_AND:
+        return gen->builder.CreateAnd(lhsValue, rhsValue);
+    case TOKEN_OPERATOR_OR:
+        return gen->builder.CreateOr(lhsValue, rhsValue);
+    default:
+        return nullptr;
+	}
+}
+
+llvm::Value* UnaryExpr::codegen(Generator *gen)
+{
+	auto* val = expr->codegen(gen);
+
+	if (!val) return nullptr;
+
+	switch (op.type)
+	{
+		case TOKEN_OPERATOR_MINUS:
+			return gen->builder.CreateNeg(val);
+		case TOKEN_OPERATOR_NOT:
+			return gen->builder.CreateNot(val);
+		case TOKEN_POINTER:
+			if (!val->getType()->isPointerTy()) return nullptr;
+			//return builder.CreateLoad(val)
+		default:
+			return nullptr;
+
+	}
 }
 
 llvm::Value* Return::codegen(Generator *gen)
@@ -138,8 +220,7 @@ llvm::Value* FunctionCall::codegen(Generator *gen)
 
 	for (auto arg : params)
 	{
-		auto s = static_cast<StringLiteral *>(arg);
-		callArgs.push_back(gen->builder.CreateGlobalStringPtr(s->value));
+		callArgs.push_back(arg->codegen(gen));
 	}
 
 	return gen->builder.CreateCall(func, callArgs);

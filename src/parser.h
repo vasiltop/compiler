@@ -15,6 +15,12 @@
 
 class Generator;
 
+static void indentPrint(int indent, const std::string &str)
+{
+	std::string indentStr(indent * 2, ' ');
+	std::cout << indentStr << str << std::endl;
+}
+
 struct ASTNode
 {
 	virtual ~ASTNode() = default;
@@ -30,12 +36,6 @@ struct ASTNode
 
 };
 
-static void indentPrint(int indent, const std::string &str)
-{
-	std::string indentStr(indent * 2, ' ');
-	std::cout << indentStr << str << std::endl;
-}
-
 struct Type : public ASTNode
 {
 	size_t pointerLevel;
@@ -47,6 +47,11 @@ struct Type : public ASTNode
 		indentPrint(level + 1, "Level: " + std::to_string(pointerLevel));
 		indentPrint(level + 1, "Name: " + name);
 	}
+};
+
+struct Scope {
+	Scope *parent;
+	std::map<std::string, Type *> variables;
 };
 
 struct FunctionDefinition : public ASTNode
@@ -115,6 +120,7 @@ struct StringLiteral: public ASTNode
 {
 	std::string value;
 
+	llvm::Value* codegen(Generator *gen) override;
 	StringLiteral(const std::string& val) : value(val) {}
 	void print(int level) override
 	{
@@ -126,6 +132,7 @@ struct IntLiteral: public ASTNode
 {
 	int value;
 
+	llvm::Value* codegen(Generator *gen) override;
   IntLiteral(int val) : value(val) {}
 	void print(int level) override
 	{
@@ -137,6 +144,7 @@ struct BoolLiteral: public ASTNode
 {
 	bool value;
 
+	llvm::Value* codegen(Generator *gen) override;
 	BoolLiteral(bool val) : value(val) {}
 	void print(int level) override
 	{
@@ -150,6 +158,7 @@ struct BinaryExpr : public ASTNode
 	ASTNode *lhs;
 	ASTNode *rhs;
 
+	llvm::Value* codegen(Generator *gen) override;
 	BinaryExpr(Token op, ASTNode* left, ASTNode* right)
 		: op(op), lhs(left), rhs(right) {}
 	void print(int level) override
@@ -165,6 +174,7 @@ struct UnaryExpr: public ASTNode
 	Token op;
 	ASTNode *expr;
 
+	llvm::Value* codegen(Generator *gen) override;
 	UnaryExpr(Token op, ASTNode* expr)
     : op(op), expr(expr) {}
 	void print(int level) override
@@ -217,13 +227,13 @@ private:
 	std::filesystem::path baseDir;
 
 	// Node parsers
-	ASTNode *parseGlobal();
-	ASTNode *parseLocal();
-	ASTNode *parseExpression(int precedence = 0);
-	ASTNode *parseUnary();
-	ASTNode *parsePrimary();
-	FunctionDefinition *parseFunction();
-	FunctionCall *parseFunctionCall();
+	ASTNode *parseGlobal(Scope *scope);
+	ASTNode *parseLocal(Scope *scope);
+	ASTNode *parseExpression(Scope *scope, int precedence = 0);
+	ASTNode *parseUnary(Scope *scope);
+	ASTNode *parsePrimary(Scope *scope);
+	FunctionDefinition *parseFunction(Scope *scope);
+	FunctionCall *parseFunctionCall(Scope *scope);
 	Type *parseType();
 };
 

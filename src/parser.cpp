@@ -36,6 +36,7 @@ std::filesystem::path FileParser::resolveImportPath(std::filesystem::path p)
 
 std::vector<ASTNode *> FileParser::parse()
 {
+	Scope *scope = new Scope;
 	std::vector<ASTNode *> nodes;
 
 	expectConsume(TOKEN_KEYWORD_MODULE, "Expected keyword module");
@@ -59,20 +60,20 @@ std::vector<ASTNode *> FileParser::parse()
 			continue;
 		}
 
-		nodes.push_back(parseGlobal());
+		nodes.push_back(parseGlobal(scope));
 	}
 
 	return nodes;
 }
 
-ASTNode *FileParser::parseGlobal()
+ASTNode *FileParser::parseGlobal(Scope *scope)
 {
 	Token cur = tokens[index];
 
 	switch (cur.type)
 	{
 		case TOKEN_IDENTIFIER:
-				return parseFunction();
+				return parseFunction(scope);
 		break;
 	}
 
@@ -88,7 +89,11 @@ ASTNode *FileParser::parseGlobal()
 
 }
 
-FunctionDefinition *FileParser::parseFunction() {
+FunctionDefinition *FileParser::parseFunction(Scope *scope) {
+
+	Scope *funcScope = new Scope;
+	funcScope->parent = scope;
+	
 	FunctionDefinition *def = new FunctionDefinition;
 	def->moduleName = parser->pathToModule[path];
 
@@ -109,12 +114,13 @@ FunctionDefinition *FileParser::parseFunction() {
 			continue;
 		}
 		
-		Token varName = expectConsume(TOKEN_IDENTIFIER, "Expected variable name");
-		def->paramNames.push_back(varName.value);
-		
+		std::string varName = expectConsume(TOKEN_IDENTIFIER, "Expected variable name").value;
+		def->paramNames.push_back(varName);
 		expectConsume(TOKEN_COLON, "Expected colon after type");
+		Type *type = parseType();
+		def->paramTypes.push_back(type);
 
-		def->paramTypes.push_back(parseType());
+		funcScope->variables[varName] = type;
 	}
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
@@ -129,7 +135,7 @@ FunctionDefinition *FileParser::parseFunction() {
 
 		while (tokens[index].type != TOKEN_RIGHT_BRACE)
 		{
-			body.push_back(parseLocal());
+			body.push_back(parseLocal(funcScope));
 		}
 
 		def->body = body;
@@ -157,16 +163,18 @@ Type *FileParser::parseType()
 	return t;
 }
 
-ASTNode *FileParser::parseLocal()
+ASTNode *FileParser::parseLocal(Scope *scope)
 {
 	switch (tokens[index].type)
 	{
 		case TOKEN_IDENTIFIER:
-			return parseFunctionCall();
+			return parseFunctionCall(scope);
 
 		case TOKEN_KEYWORD_RETURN:
 			Return *ret = new Return;
 			expectConsume(TOKEN_KEYWORD_RETURN, "Expected the return keyword");
+
+			// TODO: Change this to parse an expression
 			auto tok = expectConsume(TOKEN_INT_LITERAL, "Expected the return keyword");
 			ret->value = std::stoi(tok.value);
 			expectConsume(TOKEN_SEMICOLON, "Expected semicolon after return");
@@ -185,7 +193,7 @@ ASTNode *FileParser::parseLocal()
 	exit(1);
 }
 
-FunctionCall *FileParser::parseFunctionCall()
+FunctionCall *FileParser::parseFunctionCall(Scope *scope)
 {
 	FunctionCall *call = new FunctionCall;
 
@@ -196,7 +204,6 @@ FunctionCall *FileParser::parseFunctionCall()
 	expectConsume(TOKEN_LEFT_PAREN, "Expected opening function paren");
 
 	// Parse arguments
-
 	while (tokens[index].type != TOKEN_RIGHT_PAREN)
 	{
 		if (tokens[index].type == TOKEN_COMMA)
@@ -205,7 +212,7 @@ FunctionCall *FileParser::parseFunctionCall()
 			continue;
 		}
 
-		call->params.push_back(parseExpression());
+		call->params.push_back(parseExpression(scope));
 	}
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
@@ -242,9 +249,9 @@ int getPrecedence(TokenType type)
     }
 }
 
-ASTNode *FileParser::parseExpression(int precedence)
+ASTNode *FileParser::parseExpression(Scope *scope, int precedence)
 {
-	auto left = parseUnary();
+	auto left = parseUnary(scope);
 
 	for (;;)
 	{
@@ -258,7 +265,7 @@ ASTNode *FileParser::parseExpression(int precedence)
 
 		index++;
 		
-		auto right = parseExpression(currentPrecedence + 1);
+		auto right = parseExpression(scope, currentPrecedence + 1);
 
 		left = new BinaryExpr(tok, left, right);
 	}
@@ -266,21 +273,21 @@ ASTNode *FileParser::parseExpression(int precedence)
 	return left;
 }
 
-ASTNode *FileParser::parseUnary()
+ASTNode *FileParser::parseUnary(Scope *scope)
 {
 	Token tok = tokens[index];
 
-	if (tok.type == TOKEN_OPERATOR_NOT || tok.type == TOKEN_OPERATOR_MINUS)
+	if (tok.type == TOKEN_OPERATOR_NOT || tok.type == TOKEN_OPERATOR_MINUS || tok.type == TOKEN_POINTER)
 	{
 		index++;
-		auto expr = parseUnary();
+		auto expr = parseUnary(scope);
 		return new UnaryExpr(tok, expr);
 	}
 
-	return parsePrimary();
+	return parsePrimary(scope);
 }
 
-ASTNode *FileParser::parsePrimary()
+ASTNode *FileParser::parsePrimary(Scope *scope)
 {
 	auto cur = tokens[index];
 	
@@ -297,7 +304,7 @@ ASTNode *FileParser::parsePrimary()
 			return new BoolLiteral(cur.value == "true");
 		case TOKEN_LEFT_PAREN:
 			index++;
-			auto expr = parseExpression();
+			auto expr = parseExpression(scope);
 			expectConsume(TOKEN_RIGHT_PAREN, "Expected )");
 			return expr;
 	}
