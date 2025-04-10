@@ -91,10 +91,10 @@ void Generator::generate()
 {
 	generateFunctionDefinitions();
 
-	GScope *scope = new GScope(nullptr);
 
 	for (auto fileInfo: parser->files)
 	{
+		GScope *scope = new GScope(nullptr);
 		currentFile = &fileInfo;
 		for (auto node: fileInfo.nodes)
 		{
