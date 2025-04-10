@@ -103,12 +103,13 @@ struct FunctionCall : public ASTNode
 
 struct Return : public ASTNode
 {
-	int value;
+	ASTNode *expr;
 
 	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
-		indentPrint(level, "Return: " + std::to_string(value));
+		indentPrint(level, "Return: ");
+		expr->print(level + 1);
 	}
 };
 

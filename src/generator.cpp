@@ -241,7 +241,15 @@ llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 
 llvm::Value* Return::codegen(GScope *scope, Generator *gen)
 {
-	return gen->builder.CreateRet(gen->builder.getInt32(value));
+	auto e = expr->codegen(scope, gen);
+
+	if (!e)
+	{
+		std::cout << "Invalid expression in return\n";
+		return nullptr;
+	}
+
+	return gen->builder.CreateRet(e);
 }
 
 llvm::Value* FunctionCall::codegen(GScope *scope, Generator *gen)

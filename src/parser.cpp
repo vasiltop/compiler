@@ -59,7 +59,9 @@ std::vector<ASTNode *> FileParser::parse()
 			continue;
 		}
 
-		nodes.push_back(parseGlobal());
+		auto node = parseGlobal();
+		node->print(0);
+		nodes.push_back(node);
 	}
 
 	return nodes;
@@ -163,15 +165,16 @@ ASTNode *FileParser::parseLocal()
 	switch (tokens[index].type)
 	{
 		case TOKEN_IDENTIFIER:
-			return parseFunctionCall();
-
+			{
+				FunctionCall *f = parseFunctionCall();
+				expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
+				return f;
+			}
+		
 		case TOKEN_KEYWORD_RETURN:
 			Return *ret = new Return;
 			expectConsume(TOKEN_KEYWORD_RETURN, "Expected the return keyword");
-
-			// TODO: Change this to parse an expression
-			auto tok = expectConsume(TOKEN_INT_LITERAL, "Expected the return keyword");
-			ret->value = std::stoi(tok.value);
+			ret->expr = parseExpression();
 			expectConsume(TOKEN_SEMICOLON, "Expected semicolon after return");
 
 			return ret;
@@ -211,7 +214,6 @@ FunctionCall *FileParser::parseFunctionCall()
 	}
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
-	expectConsume(TOKEN_SEMICOLON, "Expected a semicolon");
 
 	return call;
 }
@@ -298,12 +300,19 @@ ASTNode *FileParser::parsePrimary()
 		case TOKEN_LEFT_PAREN:
 			{
 				auto expr = parseExpression();
-				expectConsume(TOKEN_RIGHT_PAREN, "Expected )");
+				expectConsume(TOKEN_RIGHT_PAREN, "Expected ) after parsing expression");
 				return expr;
 			}
 		case TOKEN_IDENTIFIER:
-			// TODO: this might be a namespaced function call or namespaced global variable
-			return new Variable(cur.value);
+			{
+				if (tokens[index].type == TOKEN_DOT)
+				{
+					index--;
+					return parseFunctionCall();
+				}
+
+				return new Variable(cur.value);
+			}
 	}
 
 	return nullptr;
@@ -323,7 +332,8 @@ void FileParser::expect(TokenType type, std::string errorMessage)
 	{
 		Token p = tokens[index];
 		FilePosition pos = p.position;
-		std::string tokString = Lexer::tokenEnumToString[p.type];
+		//std::string tokString = Lexer::tokenEnumToString[p.type];
+		std::string tokString = p.value;
 
 		std::cerr << path.string() << ":"
 			<< pos.row << ":" << pos.col
@@ -382,11 +392,11 @@ void Parser::parse(std::filesystem::path p)
 	FileParser fileParser(lex.tokens(), p, this);
 	auto ast = fileParser.parse();
 
-	std::cout << "AST for file: " << p << "\n";
-	for (ASTNode *node: ast) {
-		node->print(0);
-	}
-	std::cout << std::endl;
+	//std::cout << "AST for file: " << p << "\n";
+//	for (ASTNode *node: ast) {
+//		node->print(0);
+//	}
+//	std::cout << std::endl;
 
 	FileInfo file = { p, ast, fileParser.functionSymbols };
 	files.push_back(file);
