@@ -3,6 +3,29 @@
 
 Generator::Generator(Parser *parser): parser(parser), builder(ctx), module("main", ctx) {}
 
+GScope::GScope(GScope *parent): parent(parent) {}
+
+std::pair<llvm::Value *, GType> GScope::getVar(std::string name)
+{
+	GScope *cur = this;
+	unsigned level = 0;
+
+	while (cur)
+	{
+		if (cur->variables.find(name) != cur->variables.end())
+		{
+			return cur->variables[name];	
+		}
+		else
+		{
+			level++;
+			cur = cur->parent;
+		}
+	}
+
+	return std::pair{nullptr, GType{nullptr, 0}};
+}
+
 llvm::Type *GType::type(llvm::LLVMContext &ctx)
 {
 	if (depth > 0)
@@ -24,7 +47,7 @@ GType Generator::typeInfo(Type *type)
 	}
 	else if (type->name == "void")
 	{
-		ty = llvm::Type::getVoidTy(ctx);
+	ty = llvm::Type::getVoidTy(ctx);
 	}
 	else if (type->name == "u8")
 	{
@@ -68,12 +91,14 @@ void Generator::generate()
 {
 	generateFunctionDefinitions();
 
+	GScope *scope = new GScope(nullptr);
+
 	for (auto fileInfo: parser->files)
 	{
 		currentFile = &fileInfo;
 		for (auto node: fileInfo.nodes)
 		{
-			node->codegen(this);
+			node->codegen(scope, this);
 		}
 	}
 
@@ -94,9 +119,11 @@ void Generator::generate()
 	system("clang out.ll");
 }
 
-llvm::Value* FunctionDefinition::codegen(Generator *gen)
+llvm::Value* FunctionDefinition::codegen(GScope *scope, Generator *gen)
 {
 	if (!body) return nullptr;
+
+	GScope *funcScope = new GScope(scope);
 
 	llvm::Function *func = gen->functionSymbols[moduleName][name];
 	llvm::BasicBlock *entry = llvm::BasicBlock::Create(gen->module.getContext(), "entry", func);	
@@ -108,11 +135,15 @@ llvm::Value* FunctionDefinition::codegen(Generator *gen)
 	{
 		llvm::AllocaInst *alloc = gen->builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
 		gen->builder.CreateStore(&arg, alloc);
+
+		GType ty = gen->typeInfo(paramTypes[i]);
+		funcScope->variables[paramNames[i]] = std::pair{alloc, ty};
+		++i;
 	}
 
 	for (auto node : body.value())
 	{
-		node->codegen(gen);
+		node->codegen(funcScope, gen);
 	}
 
 	if (func->getReturnType()->isVoidTy())
@@ -121,25 +152,38 @@ llvm::Value* FunctionDefinition::codegen(Generator *gen)
 	return func;
 }
 
-llvm::Value* StringLiteral::codegen(Generator *gen)
+llvm::Value* StringLiteral::codegen(GScope *scope, Generator *gen)
 {
 	return gen->builder.CreateGlobalStringPtr(value);	
 }
 
-llvm::Value* IntLiteral::codegen(Generator *gen)
+llvm::Value* IntLiteral::codegen(GScope *scope, Generator *gen)
 {
 	return gen->builder.getInt32(value);
 }
 
-llvm::Value* BoolLiteral::codegen(Generator *gen)
+llvm::Value* BoolLiteral::codegen(GScope *scope, Generator *gen)
 {
 	return gen->builder.getInt1(value);
 }
 
-llvm::Value *BinaryExpr::codegen(Generator *gen)
+llvm::Value* Variable::codegen(GScope *scope, Generator *gen)
 {
-	llvm::Value *lhsValue = lhs->codegen(gen);
-	llvm::Value *rhsValue = rhs->codegen(gen);
+	auto var = scope->getVar(name);
+
+	if (!var.first) 
+	{
+		std::cout << "Could not find variable with name: " << name << "\n";
+		return nullptr;
+	}
+
+	return gen->builder.CreateLoad(var.second.type(gen->ctx), var.first);
+}
+
+llvm::Value *BinaryExpr::codegen(GScope *scope, Generator *gen)
+{
+	llvm::Value *lhsValue = lhs->codegen(scope, gen);
+	llvm::Value *rhsValue = rhs->codegen(scope, gen);
 
 	if (!lhsValue || !rhsValue) return nullptr;
 
@@ -174,9 +218,9 @@ llvm::Value *BinaryExpr::codegen(Generator *gen)
 	}
 }
 
-llvm::Value* UnaryExpr::codegen(Generator *gen)
+llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 {
-	auto* val = expr->codegen(gen);
+	auto* val = expr->codegen(scope, gen);
 
 	if (!val) return nullptr;
 
@@ -195,12 +239,12 @@ llvm::Value* UnaryExpr::codegen(Generator *gen)
 	}
 }
 
-llvm::Value* Return::codegen(Generator *gen)
+llvm::Value* Return::codegen(GScope *scope, Generator *gen)
 {
 	return gen->builder.CreateRet(gen->builder.getInt32(value));
 }
 
-llvm::Value* FunctionCall::codegen(Generator *gen)
+llvm::Value* FunctionCall::codegen(GScope *scope, Generator *gen)
 {
 	if (!gen->functionSymbols.count(moduleName))
 	{
@@ -220,7 +264,7 @@ llvm::Value* FunctionCall::codegen(Generator *gen)
 
 	for (auto arg : params)
 	{
-		callArgs.push_back(arg->codegen(gen));
+		callArgs.push_back(arg->codegen(scope, gen));
 	}
 
 	return gen->builder.CreateCall(func, callArgs);

@@ -2,7 +2,7 @@ module "entry"
 import "std:io"
 
 main :: () i32 {
-	io.print("a");
+	io.print("hello world\n");
 
 	return 0;
 }

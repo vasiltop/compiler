@@ -36,7 +36,6 @@ std::filesystem::path FileParser::resolveImportPath(std::filesystem::path p)
 
 std::vector<ASTNode *> FileParser::parse()
 {
-	Scope *scope = new Scope;
 	std::vector<ASTNode *> nodes;
 
 	expectConsume(TOKEN_KEYWORD_MODULE, "Expected keyword module");
@@ -60,20 +59,20 @@ std::vector<ASTNode *> FileParser::parse()
 			continue;
 		}
 
-		nodes.push_back(parseGlobal(scope));
+		nodes.push_back(parseGlobal());
 	}
 
 	return nodes;
 }
 
-ASTNode *FileParser::parseGlobal(Scope *scope)
+ASTNode *FileParser::parseGlobal()
 {
 	Token cur = tokens[index];
 
 	switch (cur.type)
 	{
 		case TOKEN_IDENTIFIER:
-				return parseFunction(scope);
+				return parseFunction();
 		break;
 	}
 
@@ -89,10 +88,7 @@ ASTNode *FileParser::parseGlobal(Scope *scope)
 
 }
 
-FunctionDefinition *FileParser::parseFunction(Scope *scope) {
-
-	Scope *funcScope = new Scope;
-	funcScope->parent = scope;
+FunctionDefinition *FileParser::parseFunction() {
 	
 	FunctionDefinition *def = new FunctionDefinition;
 	def->moduleName = parser->pathToModule[path];
@@ -120,7 +116,6 @@ FunctionDefinition *FileParser::parseFunction(Scope *scope) {
 		Type *type = parseType();
 		def->paramTypes.push_back(type);
 
-		funcScope->variables[varName] = type;
 	}
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
@@ -135,7 +130,7 @@ FunctionDefinition *FileParser::parseFunction(Scope *scope) {
 
 		while (tokens[index].type != TOKEN_RIGHT_BRACE)
 		{
-			body.push_back(parseLocal(funcScope));
+			body.push_back(parseLocal());
 		}
 
 		def->body = body;
@@ -163,12 +158,12 @@ Type *FileParser::parseType()
 	return t;
 }
 
-ASTNode *FileParser::parseLocal(Scope *scope)
+ASTNode *FileParser::parseLocal()
 {
 	switch (tokens[index].type)
 	{
 		case TOKEN_IDENTIFIER:
-			return parseFunctionCall(scope);
+			return parseFunctionCall();
 
 		case TOKEN_KEYWORD_RETURN:
 			Return *ret = new Return;
@@ -193,7 +188,7 @@ ASTNode *FileParser::parseLocal(Scope *scope)
 	exit(1);
 }
 
-FunctionCall *FileParser::parseFunctionCall(Scope *scope)
+FunctionCall *FileParser::parseFunctionCall()
 {
 	FunctionCall *call = new FunctionCall;
 
@@ -212,7 +207,7 @@ FunctionCall *FileParser::parseFunctionCall(Scope *scope)
 			continue;
 		}
 
-		call->params.push_back(parseExpression(scope));
+		call->params.push_back(parseExpression());
 	}
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
@@ -249,9 +244,9 @@ int getPrecedence(TokenType type)
     }
 }
 
-ASTNode *FileParser::parseExpression(Scope *scope, int precedence)
+ASTNode *FileParser::parseExpression(int precedence)
 {
-	auto left = parseUnary(scope);
+	auto left = parseUnary();
 
 	for (;;)
 	{
@@ -265,7 +260,7 @@ ASTNode *FileParser::parseExpression(Scope *scope, int precedence)
 
 		index++;
 		
-		auto right = parseExpression(scope, currentPrecedence + 1);
+		auto right = parseExpression(currentPrecedence + 1);
 
 		left = new BinaryExpr(tok, left, right);
 	}
@@ -273,40 +268,42 @@ ASTNode *FileParser::parseExpression(Scope *scope, int precedence)
 	return left;
 }
 
-ASTNode *FileParser::parseUnary(Scope *scope)
+ASTNode *FileParser::parseUnary()
 {
 	Token tok = tokens[index];
 
 	if (tok.type == TOKEN_OPERATOR_NOT || tok.type == TOKEN_OPERATOR_MINUS || tok.type == TOKEN_POINTER)
 	{
 		index++;
-		auto expr = parseUnary(scope);
+		auto expr = parseUnary();
 		return new UnaryExpr(tok, expr);
 	}
 
-	return parsePrimary(scope);
+	return parsePrimary();
 }
 
-ASTNode *FileParser::parsePrimary(Scope *scope)
+ASTNode *FileParser::parsePrimary()
 {
 	auto cur = tokens[index];
-	
+	index++;
+
 	switch (cur.type)
 	{
 		case TOKEN_INT_LITERAL:
-			index++;
 			return new IntLiteral(std::stoi(cur.value));
 		case TOKEN_STRING_LITERAL:
-			index++;
 			return new StringLiteral(cur.value);
 		case TOKEN_BOOL_LITERAL:
-			index++;
 			return new BoolLiteral(cur.value == "true");
 		case TOKEN_LEFT_PAREN:
-			index++;
-			auto expr = parseExpression(scope);
-			expectConsume(TOKEN_RIGHT_PAREN, "Expected )");
-			return expr;
+			{
+				auto expr = parseExpression();
+				expectConsume(TOKEN_RIGHT_PAREN, "Expected )");
+				return expr;
+			}
+		case TOKEN_IDENTIFIER:
+			// TODO: this might be a namespaced function call or namespaced global variable
+			return new Variable(cur.value);
 	}
 
 	return nullptr;

@@ -14,6 +14,7 @@
 #include "llvm/IR/IRBuilder.h"
 
 class Generator;
+class GScope;
 
 static void indentPrint(int indent, const std::string &str)
 {
@@ -29,7 +30,7 @@ struct ASTNode
 		std::cout << "Unimplemented\n";
 	}
 
-	virtual llvm::Value* codegen(Generator *gen)
+	virtual llvm::Value* codegen(GScope *scope, Generator *gen)
 	{
 		return nullptr;
 	}
@@ -49,11 +50,6 @@ struct Type : public ASTNode
 	}
 };
 
-struct Scope {
-	Scope *parent;
-	std::map<std::string, Type *> variables;
-};
-
 struct FunctionDefinition : public ASTNode
 {
 	std::string moduleName;
@@ -63,7 +59,7 @@ struct FunctionDefinition : public ASTNode
 	Type *returnType;
 	std::optional<std::vector<ASTNode *>> body;
 
-	llvm::Value* codegen(Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Function: " + name);
@@ -93,7 +89,7 @@ struct FunctionCall : public ASTNode
 	std::string name;
 	std::vector<ASTNode *> params;
 
-	llvm::Value* codegen(Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Function Call: " + name);
@@ -109,7 +105,7 @@ struct Return : public ASTNode
 {
 	int value;
 
-	llvm::Value* codegen(Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Return: " + std::to_string(value));
@@ -120,7 +116,7 @@ struct StringLiteral: public ASTNode
 {
 	std::string value;
 
-	llvm::Value* codegen(Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	StringLiteral(const std::string& val) : value(val) {}
 	void print(int level) override
 	{
@@ -128,11 +124,23 @@ struct StringLiteral: public ASTNode
 	}
 };
 
+struct Variable: public ASTNode
+{
+	std::string name;
+
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	Variable(const std::string& name) : name(name) {}
+	void print(int level) override
+	{
+		indentPrint(level, "Variable: " + name);
+	}
+};
+
 struct IntLiteral: public ASTNode
 {
 	int value;
 
-	llvm::Value* codegen(Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
   IntLiteral(int val) : value(val) {}
 	void print(int level) override
 	{
@@ -144,7 +152,7 @@ struct BoolLiteral: public ASTNode
 {
 	bool value;
 
-	llvm::Value* codegen(Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	BoolLiteral(bool val) : value(val) {}
 	void print(int level) override
 	{
@@ -158,7 +166,7 @@ struct BinaryExpr : public ASTNode
 	ASTNode *lhs;
 	ASTNode *rhs;
 
-	llvm::Value* codegen(Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	BinaryExpr(Token op, ASTNode* left, ASTNode* right)
 		: op(op), lhs(left), rhs(right) {}
 	void print(int level) override
@@ -174,7 +182,7 @@ struct UnaryExpr: public ASTNode
 	Token op;
 	ASTNode *expr;
 
-	llvm::Value* codegen(Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	UnaryExpr(Token op, ASTNode* expr)
     : op(op), expr(expr) {}
 	void print(int level) override
@@ -227,13 +235,13 @@ private:
 	std::filesystem::path baseDir;
 
 	// Node parsers
-	ASTNode *parseGlobal(Scope *scope);
-	ASTNode *parseLocal(Scope *scope);
-	ASTNode *parseExpression(Scope *scope, int precedence = 0);
-	ASTNode *parseUnary(Scope *scope);
-	ASTNode *parsePrimary(Scope *scope);
-	FunctionDefinition *parseFunction(Scope *scope);
-	FunctionCall *parseFunctionCall(Scope *scope);
+	ASTNode *parseGlobal();
+	ASTNode *parseLocal();
+	ASTNode *parseExpression(int precedence = 0);
+	ASTNode *parseUnary();
+	ASTNode *parsePrimary();
+	FunctionDefinition *parseFunction();
+	FunctionCall *parseFunctionCall();
 	Type *parseType();
 };
 

@@ -20,6 +20,16 @@ struct GType
 	llvm::Type *type(llvm::LLVMContext &ctx);
 };
 
+struct GScope
+{
+	GScope *parent;
+	std::map<std::string, std::pair<llvm::Value *, GType>> variables;
+	
+	GScope(GScope *parent);
+
+	std::pair<llvm::Value *, GType> getVar(std::string name);
+};
+
 class Generator
 {
 public:
@@ -33,9 +43,9 @@ public:
 
 	void displayFunctionSymbols();
 	std::map<std::string, std::map<std::string, llvm::Function *>> functionSymbols;
+	GType typeInfo(Type *type);
 private:
 	Parser *parser;
-	GType typeInfo(Type *type);
 	void generateFunctionDefinitions();
 };
 
