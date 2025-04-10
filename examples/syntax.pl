@@ -2,11 +2,8 @@ module "entry"
 import "std:io"
 
 main :: () i32 {
-	io.print("%d\n", entry.test());
+	let a: i32 = 5;
+	io.print("%d\n", a);
 
 	return 0;
-}
-
-test :: () i32 {
-	return 5;
 }

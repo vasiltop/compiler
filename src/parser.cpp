@@ -172,12 +172,16 @@ ASTNode *FileParser::parseLocal()
 			}
 		
 		case TOKEN_KEYWORD_RETURN:
-			Return *ret = new Return;
-			expectConsume(TOKEN_KEYWORD_RETURN, "Expected the return keyword");
-			ret->expr = parseExpression();
-			expectConsume(TOKEN_SEMICOLON, "Expected semicolon after return");
+			{
+				Return *ret = new Return;
+				expectConsume(TOKEN_KEYWORD_RETURN, "Expected the return keyword");
+				ret->expr = parseExpression();
+				expectConsume(TOKEN_SEMICOLON, "Expected semicolon after return");
 
-			return ret;
+				return ret;
+			}
+		case TOKEN_KEYWORD_LET:
+			return parseVariableDecl();
 	}
 
 	Token p = tokens[index];
@@ -216,6 +220,19 @@ FunctionCall *FileParser::parseFunctionCall()
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
 
 	return call;
+}
+
+VariableDecl *FileParser::parseVariableDecl()
+{
+	expectConsume(TOKEN_KEYWORD_LET, "");
+	auto name = expectConsume(TOKEN_IDENTIFIER, "Expected variable name").value;
+	expectConsume(TOKEN_COLON, "Expect colon for variable type");
+	auto type = parseType();
+	expectConsume(TOKEN_OPERATOR_ASSIGN, "Expect assign eq");
+	auto expr = parseExpression();
+	expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
+
+	return new VariableDecl(name, type, expr);
 }
 
 int getPrecedence(TokenType type)
@@ -387,7 +404,7 @@ void Parser::parse(std::filesystem::path p)
 {
 	//std::cout << "Beginning to parse: " << p << "\n";
 	Lexer lex(p);
-	//lex.display(lex.tokens());
+	lex.display(lex.tokens());
 
 	FileParser fileParser(lex.tokens(), p, this);
 	auto ast = fileParser.parse();

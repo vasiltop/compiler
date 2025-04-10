@@ -239,6 +239,18 @@ llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 	}
 }
 
+llvm::Value* VariableDecl::codegen(GScope *scope, Generator *gen)
+{
+	auto ty = gen->typeInfo(type);
+	auto val = expr->codegen(scope, gen);
+
+	auto *alloc = gen->builder.CreateAlloca(ty.type(gen->ctx), nullptr, varName);
+	gen->builder.CreateStore(val, alloc);
+	scope->variables[varName] = std::pair{alloc, ty};
+
+	return alloc;
+}
+
 llvm::Value* Return::codegen(GScope *scope, Generator *gen)
 {
 	auto e = expr->codegen(scope, gen);

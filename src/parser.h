@@ -137,6 +137,23 @@ struct Variable: public ASTNode
 	}
 };
 
+struct VariableDecl: public ASTNode
+{
+	std::string varName;
+	Type *type;
+	ASTNode *expr;
+
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	VariableDecl(const std::string& varName, Type *type, ASTNode *expr) : varName(varName), type(type), expr(expr) {}
+
+	void print(int level) override
+	{
+		indentPrint(level, "Variable Decl: " + varName);
+		type->print(level + 1);
+		expr->print(level + 1);
+	}
+};
+
 struct IntLiteral: public ASTNode
 {
 	int value;
@@ -243,6 +260,7 @@ private:
 	ASTNode *parsePrimary();
 	FunctionDefinition *parseFunction();
 	FunctionCall *parseFunctionCall();
+	VariableDecl *parseVariableDecl();
 	Type *parseType();
 };
 
