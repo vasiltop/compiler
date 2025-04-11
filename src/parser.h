@@ -128,6 +128,20 @@ struct Return : public ASTNode
 	}
 };
 
+struct Assign: public ASTNode
+{
+	std::string name;
+	ASTNode *expr;
+
+	Assign(std::string name, ASTNode *expr): name(name), expr(expr) {}
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	void print(int level) override
+	{
+		indentPrint(level, "Assign: " + name);
+		expr->print(level + 1);
+	}
+};
+
 struct StringLiteral: public ASTNode
 {
 	std::string value;
@@ -291,6 +305,7 @@ private:
 	ASTNode *parsePrimary();
 	ASTNode *parseSpecial();
 	FunctionDefinition *parseFunction();
+	Assign *parseAssign();
 	FunctionCall *parseFunctionCall();
 	VariableDecl *parseVariableDecl();
 	Type *parseType();

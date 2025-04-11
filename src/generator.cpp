@@ -314,6 +314,14 @@ llvm::Value* Cast::codegen(GScope *scope, Generator *gen)
 	return nullptr;
 }
 
+llvm::Value* Assign::codegen(GScope *scope, Generator *gen)
+{
+	auto val = expr->codegen(scope, gen);
+	auto var = scope->getVar(name);
+
+	return gen->builder.CreateStore(val, var.first);
+}
+
 llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 {
 	auto* val = expr->codegen(scope, gen);

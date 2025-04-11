@@ -160,17 +160,33 @@ Type *FileParser::parseType()
 	return t;
 }
 
+Assign *FileParser::parseAssign()
+{
+	auto name = expectConsume(TOKEN_IDENTIFIER, "");
+	expectConsume(TOKEN_OPERATOR_ASSIGN, "");
+	auto expr = parseExpression();
+	expectConsume(TOKEN_SEMICOLON, "Expect semicolon");
+
+	return new Assign(name.value, expr);
+}
+
 ASTNode *FileParser::parseLocal()
 {
 	switch (tokens[index].type)
 	{
 		case TOKEN_IDENTIFIER:
 			{
-				FunctionCall *f = parseFunctionCall();
-				expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
-				return f;
+				if (tokens[index + 1].type == TOKEN_OPERATOR_ASSIGN)
+				{
+					return parseAssign();
+				}
+				else
+				{
+					FunctionCall *f = parseFunctionCall();
+					expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
+					return f;
+				}
 			}
-		
 		case TOKEN_KEYWORD_RETURN:
 			{
 				Return *ret = new Return;
