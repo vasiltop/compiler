@@ -48,6 +48,21 @@ struct Type : public ASTNode
 		indentPrint(level + 1, "Level: " + std::to_string(pointerLevel));
 		indentPrint(level + 1, "Name: " + name);
 	}
+
+	bool isSigned()
+	{
+		if (
+				name == "u8" || 
+				name == "u16" || 
+				name == "u32" || 
+				name == "u64"
+				)
+		{
+			return false;
+		}
+
+		return true;
+	}
 };
 
 struct FunctionDefinition : public ASTNode
@@ -210,6 +225,22 @@ struct UnaryExpr: public ASTNode
 	}
 };
 
+struct Cast: public ASTNode
+{
+	Type *type;
+	ASTNode *expr;
+
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	Cast(Type *type, ASTNode *expr)
+    : type(type), expr(expr) {}
+	void print(int level) override
+	{
+		indentPrint(level, "Cast: ");
+		type->print(level + 2);
+		expr->print(level + 2);
+	}
+};
+
 struct FileInfo
 {
 	std::filesystem::path path;
@@ -258,6 +289,7 @@ private:
 	ASTNode *parseExpression(int precedence = 0);
 	ASTNode *parseUnary();
 	ASTNode *parsePrimary();
+	ASTNode *parseSpecial();
 	FunctionDefinition *parseFunction();
 	FunctionCall *parseFunctionCall();
 	VariableDecl *parseVariableDecl();

@@ -314,6 +314,8 @@ ASTNode *FileParser::parsePrimary()
 			return new StringLiteral(cur.value);
 		case TOKEN_BOOL_LITERAL:
 			return new BoolLiteral(cur.value == "true");
+		case TOKEN_AT:
+			return parseSpecial();
 		case TOKEN_LEFT_PAREN:
 			{
 				auto expr = parseExpression();
@@ -330,6 +332,26 @@ ASTNode *FileParser::parsePrimary()
 
 				return new Variable(cur.value);
 			}
+	}
+
+	return nullptr;
+}
+
+ASTNode *FileParser::parseSpecial()
+{
+	auto cur = tokens[index];
+	index++;
+
+	expectConsume(TOKEN_LEFT_PAREN, "Expected opening paren");
+
+	if (cur.value == "cast")
+	{
+		auto type = parseType();
+		expectConsume(TOKEN_COMMA, "Expected comma");
+		auto expr = parseExpression();
+
+		expectConsume(TOKEN_RIGHT_PAREN, "Expected closing paren");
+		return new Cast(type, expr);
 	}
 
 	return nullptr;

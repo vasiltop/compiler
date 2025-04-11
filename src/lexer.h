@@ -61,6 +61,7 @@ enum TokenType
 
     TOKEN_COMMA,
     TOKEN_HASHTAG,
+		TOKEN_AT,
     TOKEN_SEMICOLON,
     TOKEN_POINTER,
     TOKEN_DOT,

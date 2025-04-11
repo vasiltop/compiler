@@ -283,6 +283,37 @@ GType Generator::expressionType(ASTNode *expr, GScope *scope)
 	return GType{llvm::Type::getInt32Ty(ctx), 0};
 }
 
+llvm::Value* Cast::codegen(GScope *scope, Generator *gen)
+{
+	auto val = expr->codegen(scope, gen);
+
+	GType targetGType = gen->typeInfo(type);
+	GType sourceGType = gen->expressionType(expr, scope);
+
+	auto targetType = targetGType.type(gen->ctx);
+	auto sourceType = sourceGType.type(gen->ctx);
+
+	if (sourceType->isIntegerTy() && targetType->isIntegerTy()) {
+		unsigned srcBits = sourceType->getIntegerBitWidth();
+		unsigned dstBits = targetType->getIntegerBitWidth();
+
+		if (srcBits == dstBits) {
+			return val;
+		}
+		else if (srcBits < dstBits) {
+			if (type->isSigned()) {
+				return gen->builder.CreateSExt(val, targetType, "sext");
+			} else {
+				return gen->builder.CreateZExt(val, targetType, "zext");
+			}
+		} else {
+			return gen->builder.CreateTrunc(val, targetType, "trunc");
+		}
+	}
+
+	return nullptr;
+}
+
 llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 {
 	auto* val = expr->codegen(scope, gen);

@@ -2,22 +2,18 @@ module "entry"
 import "std:io"
 
 main :: () i32 {
-	let a: string = "hello world";
-	io.print("%c", ^(a ));
-	io.print("%c", ^(a + 1));
-	io.print("%c", ^(a + 2));
-	io.print("%c", ^(a + 3));
+    let bigNum: i32 = 12345678;
+		let smallNum: u8 = @cast(u8, bigNum);
+    
+    io.print("Original i32 value: 0x%x\n", bigNum);
+    io.print("Truncated u8 value: 0x%x\n", @cast(u8, bigNum));
+    
+    let negative: i32 = -42;
+    let unsignedSmall: u8 = @cast(u8, negative);
+    
+    io.print("\nNegative i32 value: %d\n", negative);
+    io.print("Cast to u8: %u (0x%x)\n", unsignedSmall, unsignedSmall);
 
-	let b: i32 = 4;
-	io.print("%c\n", ^(a + b));
-
-	entry.test();
-
-	// let c: u8 = @cast(u8, 4);
-
-	return 0;
-}
-
-test :: () void {
-	io.print("New line\n");
+    
+    return 0;
 }

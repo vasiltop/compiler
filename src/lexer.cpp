@@ -150,6 +150,7 @@ std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_HASHTAG, "TOKEN_HASHTAG"},
     {TOKEN_SEMICOLON, "TOKEN_SEMICOLON"},
     {TOKEN_POINTER, "TOKEN_POINTER"},
+    {TOKEN_AT, "TOKEN_AT"},
     {TOKEN_DOT, "TOKEN_DOT"},
     {TOKEN_COLON, "TOKEN_COLON"},
     {TOKEN_ARROW, "TOKEN_ARROW"},
@@ -326,7 +327,9 @@ Token Lexer::next()
         case ']':
             input.advance();
             return {TOKEN_RIGHT_SQUARE_BRACKET, "]", position};
-
+				case '@':
+            input.advance();
+            return {TOKEN_AT, "@", position};
         case ';':
             input.advance();
             return {TOKEN_SEMICOLON, ";", position};
