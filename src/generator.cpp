@@ -39,23 +39,37 @@ llvm::Type *GType::type(llvm::LLVMContext &ctx)
 GType Generator::typeInfo(Type *type)
 {
 	GType gType;
-	llvm::Type *ty = nullptr;
 
-	if (type->name == "i32")
+	llvm::Type *ty = nullptr;
+	gType.depth = type->pointerLevel;
+
+	if (type->name == "i64" || type->name == "u64")
+	{
+		ty = llvm::Type::getInt64Ty(ctx);
+	}
+	else if (type->name == "i32" || type->name == "u32")
 	{
 		ty = llvm::Type::getInt32Ty(ctx);
 	}
-	else if (type->name == "void")
+	else if (type->name == "i16" || type->name == "u16")
 	{
-	ty = llvm::Type::getVoidTy(ctx);
+		ty = llvm::Type::getInt16Ty(ctx);
 	}
-	else if (type->name == "u8")
+	else if (type->name == "i8" || type->name == "u8")
 	{
 		ty = llvm::Type::getInt8Ty(ctx);
 	}
+	else if (type->name == "void")
+	{
+		ty = llvm::Type::getVoidTy(ctx);
+	}
+	else if (type->name == "string")
+	{
+		ty = llvm::Type::getInt8Ty(ctx);
+		gType.depth = 1;
+	}
 	
 	gType.elementType = ty;
-	gType.depth = type->pointerLevel;
 
 	return gType;
 }
@@ -187,10 +201,30 @@ llvm::Value *BinaryExpr::codegen(GScope *scope, Generator *gen)
 
 	if (!lhsValue || !rhsValue) return nullptr;
 
+	auto lhsType = gen->expressionType(lhs, scope);
+	auto rhsType = gen->expressionType(rhs, scope);
+
 	switch (op.type)
 	{
 		case TOKEN_OPERATOR_PLUS:
-        return gen->builder.CreateAdd(lhsValue, rhsValue);
+			{
+				if (lhsType.isPointer() && rhsType.type(gen->ctx)->isIntegerTy()) {
+					return gen->builder.CreateGEP(
+							lhsType.elementType,
+							lhsValue, 
+							rhsValue, 
+							"ptr_add");
+				}
+				if (rhsType.isPointer() && lhsType.type(gen->ctx)->isIntegerTy()) {
+					return gen->builder.CreateGEP(
+							rhsType.elementType,
+							rhsValue, 
+							lhsValue, 
+							"ptr_add");
+				}
+				// Regular integer addition
+				return gen->builder.CreateAdd(lhsValue, rhsValue);
+			}
     case TOKEN_OPERATOR_MINUS:
         return gen->builder.CreateSub(lhsValue, rhsValue);
     case TOKEN_OPERATOR_MUL:
@@ -218,6 +252,37 @@ llvm::Value *BinaryExpr::codegen(GScope *scope, Generator *gen)
 	}
 }
 
+GType Generator::expressionType(ASTNode *expr, GScope *scope)
+{
+	if (auto* intLit = dynamic_cast<IntLiteral*>(expr)) {
+		return GType{llvm::Type::getInt32Ty(ctx), 0};
+	}
+
+	if (auto* stringLit = dynamic_cast<StringLiteral*>(expr)) {
+		return GType{llvm::Type::getInt8Ty(ctx), 1};
+	}
+
+	if (auto* var = dynamic_cast<Variable*>(expr)) {
+		return scope->getVar(var->name).second;
+	}
+
+	if (auto* unary = dynamic_cast<UnaryExpr*>(expr)) {
+		GType subType = expressionType(unary->expr, scope);
+		if (unary->op.type == TOKEN_POINTER) {
+			return GType{subType.elementType, subType.depth + 1};
+		}
+		return subType;
+	}
+
+	if (auto* binary = dynamic_cast<BinaryExpr*>(expr)) {
+		GType lhsType = expressionType(binary->lhs, scope);
+		GType rhsType = expressionType(binary->rhs, scope);
+		return lhsType; // TODO: Fix this
+	}
+
+	return GType{llvm::Type::getInt32Ty(ctx), 0};
+}
+
 llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 {
 	auto* val = expr->codegen(scope, gen);
@@ -231,8 +296,13 @@ llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 		case TOKEN_OPERATOR_NOT:
 			return gen->builder.CreateNot(val);
 		case TOKEN_POINTER:
-			if (!val->getType()->isPointerTy()) return nullptr;
-			//return builder.CreateLoad(val)
+			{
+				auto ty = gen->expressionType(expr, scope);
+
+				if (!ty.isPointer()) return nullptr;
+				GType loadedType{ty.elementType, ty.depth - 1};
+				return gen->builder.CreateLoad(loadedType.type(gen->ctx), val);
+			}
 		default:
 			return nullptr;
 
@@ -246,6 +316,12 @@ llvm::Value* VariableDecl::codegen(GScope *scope, Generator *gen)
 
 	auto *alloc = gen->builder.CreateAlloca(ty.type(gen->ctx), nullptr, varName);
 	gen->builder.CreateStore(val, alloc);
+
+	if (scope->variables.count(varName))
+	{
+		return nullptr;
+	}
+
 	scope->variables[varName] = std::pair{alloc, ty};
 
 	return alloc;

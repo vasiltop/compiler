@@ -11,6 +11,7 @@
 class FileInfo;
 class Parser;
 class Type;
+class ASTNode;
 
 struct GType
 {
@@ -18,6 +19,7 @@ struct GType
 	size_t depth;
 
 	llvm::Type *type(llvm::LLVMContext &ctx);
+	bool isPointer() const { return depth > 0; }
 };
 
 struct GScope
@@ -44,6 +46,8 @@ public:
 	void displayFunctionSymbols();
 	std::map<std::string, std::map<std::string, llvm::Function *>> functionSymbols;
 	GType typeInfo(Type *type);
+	GType expressionType(ASTNode *node, GScope *scope);
+
 private:
 	Parser *parser;
 	void generateFunctionDefinitions();
