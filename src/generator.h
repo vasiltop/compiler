@@ -48,6 +48,8 @@ public:
 	GType typeInfo(Type *type);
 	GType expressionType(ASTNode *node, GScope *scope);
 
+	bool inReferenceContext = false;
+
 private:
 	Parser *parser;
 	void generateFunctionDefinitions();

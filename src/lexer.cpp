@@ -103,7 +103,8 @@ std::unordered_map<std::string, TokenType> Lexer::keywords =
     {"struct", TOKEN_KEYWORD_STRUCT},
     {"extern", TOKEN_KEYWORD_EXTERN},
     {"import", TOKEN_KEYWORD_IMPORT},
-    {"module", TOKEN_KEYWORD_MODULE}
+    {"module", TOKEN_KEYWORD_MODULE},
+    {"and", TOKEN_OPERATOR_AND}
 };
 
 std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
@@ -150,6 +151,7 @@ std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_HASHTAG, "TOKEN_HASHTAG"},
     {TOKEN_SEMICOLON, "TOKEN_SEMICOLON"},
     {TOKEN_POINTER, "TOKEN_POINTER"},
+    {TOKEN_REFERENCE, "TOKEN_REFERENCE"},
     {TOKEN_AT, "TOKEN_AT"},
     {TOKEN_DOT, "TOKEN_DOT"},
     {TOKEN_COLON, "TOKEN_COLON"},
@@ -283,13 +285,8 @@ Token Lexer::next()
 
             return {TOKEN_OPERATOR_GREATER, ">", position};
         case '&':
-            input.advance();
-            if (input.current() == '&')
-            {
-                input.advance();
-                return {TOKEN_OPERATOR_AND, "&&", position};
-            }
-            return {TOKEN_UNKNOWN, "&", position}; // TODO: ref
+            input.advance(); 
+            return {TOKEN_REFERENCE, "&", position};
         case '|':
             input.advance();
             if (input.current() == '|')

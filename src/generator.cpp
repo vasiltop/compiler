@@ -201,7 +201,9 @@ llvm::Value* Variable::codegen(GScope *scope, Generator *gen)
 		return nullptr;
 	}
 
+	std::cout << "Variable" << name << "\n";
 	return gen->builder.CreateLoad(var.second.type(gen->ctx), var.first);
+	//return var.first;
 }
 
 llvm::Value *BinaryExpr::codegen(GScope *scope, Generator *gen)
@@ -279,6 +281,9 @@ GType Generator::expressionType(ASTNode *expr, GScope *scope)
 	if (auto* unary = dynamic_cast<UnaryExpr*>(expr)) {
 		GType subType = expressionType(unary->expr, scope);
 		if (unary->op.type == TOKEN_POINTER) {
+			return GType{subType.elementType, subType.depth - 1};
+		}
+		if (unary->op.type == TOKEN_REFERENCE) {
 			return GType{subType.elementType, subType.depth + 1};
 		}
 		return subType;
@@ -352,13 +357,26 @@ llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 			{
 				auto ty = gen->expressionType(expr, scope);
 
-				if (!ty.isPointer()) return nullptr;
+				if (!ty.isPointer()) 
+				{
+					llvm::errs() << "Cannot deref a non pointer type\n";
+					return nullptr;
+				}
+
 				GType loadedType{ty.elementType, ty.depth - 1};
+
 				return gen->builder.CreateLoad(loadedType.type(gen->ctx), val);
+			}
+		case TOKEN_REFERENCE:
+			{
+				auto ty = gen->expressionType(expr, scope);
+
+				auto alloc = gen->builder.CreateAlloca(ty.type(gen->ctx)->getPointerTo());
+				gen->builder.CreateStore(val, alloc);
+				return alloc;
 			}
 		default:
 			return nullptr;
-
 	}
 }
 
@@ -367,14 +385,13 @@ llvm::Value* VariableDecl::codegen(GScope *scope, Generator *gen)
 	auto ty = gen->typeInfo(type);
 	auto val = expr->codegen(scope, gen);
 
-	auto *alloc = gen->builder.CreateAlloca(ty.type(gen->ctx), nullptr, varName);
-	gen->builder.CreateStore(val, alloc);
-
 	if (scope->variables.count(varName))
 	{
 		return nullptr;
 	}
 
+	auto *alloc = gen->builder.CreateAlloca(ty.type(gen->ctx), nullptr, varName);
+	gen->builder.CreateStore(val, alloc);
 	scope->variables[varName] = std::pair{alloc, ty};
 
 	return alloc;

@@ -319,7 +319,7 @@ ASTNode *FileParser::parseUnary()
 {
 	Token tok = tokens[index];
 
-	if (tok.type == TOKEN_OPERATOR_NOT || tok.type == TOKEN_OPERATOR_MINUS || tok.type == TOKEN_POINTER)
+	if (tok.type == TOKEN_REFERENCE || tok.type == TOKEN_OPERATOR_NOT || tok.type == TOKEN_OPERATOR_MINUS || tok.type == TOKEN_POINTER)
 	{
 		index++;
 		auto expr = parseUnary();
