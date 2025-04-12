@@ -37,6 +37,25 @@ struct ASTNode
 
 };
 
+struct Block: public ASTNode
+{
+	std::vector<ASTNode *> body;
+
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	Block(std::vector<ASTNode *> body)
+    : body(body) {}
+
+	void print(int level) override
+	{
+		indentPrint(level, "Block: ");
+		for (auto &l: body)
+		{
+			l->print(level + 2);
+		}
+	}
+};
+
+
 struct Type : public ASTNode
 {
 	size_t pointerLevel;
@@ -72,7 +91,8 @@ struct FunctionDefinition : public ASTNode
 	std::vector<std::string> paramNames;
 	std::vector<Type *> paramTypes;
 	Type *returnType;
-	std::optional<std::vector<ASTNode *>> body;
+	
+	Block *body; // could be nullptr if no body
 
 	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
@@ -87,13 +107,10 @@ struct FunctionDefinition : public ASTNode
 			indentPrint(level + 2, "Type:");
 			paramTypes[i]->print(level + 3);
 		}
-		if (body.has_value())
+		if (body)
 		{
 			indentPrint(level + 1, "Body:");
-			for (auto node : body.value())
-			{
-				node->print(level + 2);
-			}
+			body->print(level + 2);
 		}
 	}
 };
@@ -255,6 +272,36 @@ struct Cast: public ASTNode
 	}
 };
 
+
+struct Conditional: public ASTNode
+{
+	std::vector<std::pair<ASTNode *, ASTNode *>> conditions; // condition and block
+	ASTNode *elseBlock;
+
+	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	Conditional(std::vector<std::pair<ASTNode *, ASTNode *>> conditions, ASTNode *elseBlock)
+    : conditions(conditions), elseBlock(elseBlock) {}
+
+	void print(int level) override
+	{
+		indentPrint(level, "Conditional: ");
+
+		for (auto &condition: conditions)
+		{
+			indentPrint(level, "Condition: ");
+			condition.first->print(level + 2);
+			indentPrint(level, "Block: ");
+			condition.second->print(level + 2);
+		}
+
+		if (elseBlock)
+		{
+			indentPrint(level, "Else: ");
+			elseBlock->print(level + 2);
+		}
+	}
+};
+
 struct FileInfo
 {
 	std::filesystem::path path;
@@ -307,6 +354,7 @@ private:
 	FunctionDefinition *parseFunction();
 	Assign *parseAssign();
 	FunctionCall *parseFunctionCall();
+	Block *parseBlock();
 	VariableDecl *parseVariableDecl();
 	Type *parseType();
 };

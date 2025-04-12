@@ -155,15 +155,25 @@ llvm::Value* FunctionDefinition::codegen(GScope *scope, Generator *gen)
 		++i;
 	}
 
-	for (auto node : body.value())
-	{
-		node->codegen(funcScope, gen);
-	}
+	body->codegen(funcScope, gen);
 
 	if (func->getReturnType()->isVoidTy())
 		gen->builder.CreateRetVoid();
 
 	return func;
+}
+
+
+llvm::Value* Block::codegen(GScope *scope, Generator *gen)
+{
+	GScope *blockScope = new GScope(scope);
+
+	for (auto &node: body)
+	{
+		node->codegen(blockScope, gen);
+	}
+	
+	return nullptr;
 }
 
 llvm::Value* StringLiteral::codegen(GScope *scope, Generator *gen)
@@ -318,6 +328,10 @@ llvm::Value* Assign::codegen(GScope *scope, Generator *gen)
 {
 	auto val = expr->codegen(scope, gen);
 	auto var = scope->getVar(name);
+
+	if (!var.first) {
+		llvm::errs() << "Could not find variable: " << name << "\n";
+	}
 
 	return gen->builder.CreateStore(val, var.first);
 }

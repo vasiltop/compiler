@@ -93,6 +93,7 @@ ASTNode *FileParser::parseGlobal()
 FunctionDefinition *FileParser::parseFunction() {
 	
 	FunctionDefinition *def = new FunctionDefinition;
+	def->body = nullptr;
 	def->moduleName = parser->pathToModule[path];
 
 	def->name = expectConsume(TOKEN_IDENTIFIER, "Expected Global Identifier").value;
@@ -127,17 +128,7 @@ FunctionDefinition *FileParser::parseFunction() {
 
 	if (tokens[index].type == TOKEN_LEFT_BRACE)
 	{
-		std::vector<ASTNode *> body;
-		index++;
-
-		while (tokens[index].type != TOKEN_RIGHT_BRACE)
-		{
-			body.push_back(parseLocal());
-		}
-
-		def->body = body;
-
-		expectConsume(TOKEN_RIGHT_BRACE, "Expected closing function brace");
+		def->body = parseBlock();
 	}
 
 	return def;
@@ -160,6 +151,7 @@ Type *FileParser::parseType()
 	return t;
 }
 
+
 Assign *FileParser::parseAssign()
 {
 	auto name = expectConsume(TOKEN_IDENTIFIER, "");
@@ -168,6 +160,22 @@ Assign *FileParser::parseAssign()
 	expectConsume(TOKEN_SEMICOLON, "Expect semicolon");
 
 	return new Assign(name.value, expr);
+}
+
+Block *FileParser::parseBlock()
+{
+	expectConsume(TOKEN_LEFT_BRACE, "Expected block brace");
+	std::vector<ASTNode *> body;
+
+	while (tokens[index].type != TOKEN_RIGHT_BRACE)
+	{
+		body.push_back(parseLocal());	
+	}
+
+	expectConsume(TOKEN_RIGHT_BRACE, "");
+
+	return new Block(body);
+	
 }
 
 ASTNode *FileParser::parseLocal()
@@ -198,6 +206,10 @@ ASTNode *FileParser::parseLocal()
 			}
 		case TOKEN_KEYWORD_LET:
 			return parseVariableDecl();
+		case TOKEN_LEFT_BRACE:
+			return parseBlock();
+		//case TOKEN_KEYWORD_IF:
+		//	return parseConditional();
 	}
 
 	Token p = tokens[index];
