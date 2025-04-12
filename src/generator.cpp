@@ -201,9 +201,10 @@ llvm::Value* Variable::codegen(GScope *scope, Generator *gen)
 		return nullptr;
 	}
 
-	std::cout << "Variable" << name << "\n";
+	if (gen->inReferenceContext)
+		return var.first;
+
 	return gen->builder.CreateLoad(var.second.type(gen->ctx), var.first);
-	//return var.first;
 }
 
 llvm::Value *BinaryExpr::codegen(GScope *scope, Generator *gen)
@@ -343,18 +344,24 @@ llvm::Value* Assign::codegen(GScope *scope, Generator *gen)
 
 llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 {
-	auto* val = expr->codegen(scope, gen);
-
-	if (!val) return nullptr;
-
 	switch (op.type)
 	{
 		case TOKEN_OPERATOR_MINUS:
-			return gen->builder.CreateNeg(val);
+			{
+				auto val = expr->codegen(scope, gen);
+				if (!val) return nullptr;
+				return gen->builder.CreateNeg(val);
+			}
 		case TOKEN_OPERATOR_NOT:
+			{
+			auto val = expr->codegen(scope, gen);
+			if (!val) return nullptr;
 			return gen->builder.CreateNot(val);
+			}
 		case TOKEN_POINTER:
 			{
+				auto val = expr->codegen(scope, gen);
+				if (!val) return nullptr;
 				auto ty = gen->expressionType(expr, scope);
 
 				if (!ty.isPointer()) 
@@ -369,11 +376,21 @@ llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 			}
 		case TOKEN_REFERENCE:
 			{
+				gen->inReferenceContext = true;
+				auto val = expr->codegen(scope, gen);
+				if (!val) return nullptr;
+				gen->inReferenceContext = false;
 				auto ty = gen->expressionType(expr, scope);
 
-				auto alloc = gen->builder.CreateAlloca(ty.type(gen->ctx)->getPointerTo());
-				gen->builder.CreateStore(val, alloc);
-				return alloc;
+				if (!dynamic_cast<Variable *>(expr))
+				{
+					auto alloc = gen->builder.CreateAlloca(ty.type(gen->ctx)->getPointerTo());
+					gen->builder.CreateStore(val, alloc);
+					return alloc;
+				}
+
+				return val;
+
 			}
 		default:
 			return nullptr;
