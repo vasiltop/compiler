@@ -332,14 +332,13 @@ llvm::Value* Cast::codegen(GScope *scope, Generator *gen)
 
 llvm::Value* Assign::codegen(GScope *scope, Generator *gen)
 {
-	auto val = expr->codegen(scope, gen);
-	auto var = scope->getVar(name);
 
-	if (!var.first) {
-		llvm::errs() << "Could not find variable: " << name << "\n";
-	}
+	gen->inReferenceContext = true;
+	auto lvalue = lhs->codegen(scope, gen);
+	gen->inReferenceContext = false;
 
-	return gen->builder.CreateStore(val, var.first);
+	auto rvalue = rhs->codegen(scope, gen);
+	return gen->builder.CreateStore(rvalue, lvalue);
 }
 
 llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
@@ -361,17 +360,17 @@ llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 		case TOKEN_POINTER:
 			{
 				auto val = expr->codegen(scope, gen);
-				if (!val) return nullptr;
 				auto ty = gen->expressionType(expr, scope);
 
-				if (!ty.isPointer()) 
+				if (gen->inReferenceContext)
 				{
-					llvm::errs() << "Cannot deref a non pointer type\n";
-					return nullptr;
+					if (dynamic_cast<Variable *>(expr))
+					{
+						return gen->builder.CreateLoad(ty.type(gen->ctx)->getPointerTo(), val);
+					}
 				}
 
 				GType loadedType{ty.elementType, ty.depth - 1};
-
 				return gen->builder.CreateLoad(loadedType.type(gen->ctx), val);
 			}
 		case TOKEN_REFERENCE:
@@ -380,10 +379,10 @@ llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 				auto val = expr->codegen(scope, gen);
 				if (!val) return nullptr;
 				gen->inReferenceContext = false;
-				auto ty = gen->expressionType(expr, scope);
 
 				if (!dynamic_cast<Variable *>(expr))
 				{
+					auto ty = gen->expressionType(expr, scope);
 					auto alloc = gen->builder.CreateAlloca(ty.type(gen->ctx)->getPointerTo());
 					gen->builder.CreateStore(val, alloc);
 					return alloc;

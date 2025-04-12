@@ -147,15 +147,16 @@ struct Return : public ASTNode
 
 struct Assign: public ASTNode
 {
-	std::string name;
-	ASTNode *expr;
+	ASTNode *lhs;
+	ASTNode *rhs;
 
-	Assign(std::string name, ASTNode *expr): name(name), expr(expr) {}
+	Assign(ASTNode *lhs, ASTNode *rhs): lhs(lhs), rhs(rhs) {}
 	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
-		indentPrint(level, "Assign: " + name);
-		expr->print(level + 1);
+		indentPrint(level, "Assign: ");
+		lhs->print(level + 1);
+		rhs->print(level + 1);
 	}
 };
 

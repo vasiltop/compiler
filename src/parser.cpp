@@ -154,12 +154,15 @@ Type *FileParser::parseType()
 
 Assign *FileParser::parseAssign()
 {
+	auto lhs = parseExpression();
+	/*
 	auto name = expectConsume(TOKEN_IDENTIFIER, "");
+	*/
 	expectConsume(TOKEN_OPERATOR_ASSIGN, "");
-	auto expr = parseExpression();
+	auto rhs = parseExpression();
 	expectConsume(TOKEN_SEMICOLON, "Expect semicolon");
 
-	return new Assign(name.value, expr);
+	return new Assign(lhs, rhs);
 }
 
 Block *FileParser::parseBlock()
@@ -175,13 +178,16 @@ Block *FileParser::parseBlock()
 	expectConsume(TOKEN_RIGHT_BRACE, "");
 
 	return new Block(body);
-	
 }
 
 ASTNode *FileParser::parseLocal()
 {
 	switch (tokens[index].type)
 	{
+		case TOKEN_POINTER:
+			{
+				return parseAssign();
+			}
 		case TOKEN_IDENTIFIER:
 			{
 				if (tokens[index + 1].type == TOKEN_OPERATOR_ASSIGN)
