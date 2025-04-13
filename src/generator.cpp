@@ -59,6 +59,10 @@ GType Generator::typeInfo(Type *type)
 	{
 		ty = llvm::Type::getInt8Ty(ctx);
 	}
+	else if (type->name == "bool")
+	{
+		ty = llvm::Type::getInt1Ty(ctx);
+	}
 	else if (type->name == "void")
 	{
 		ty = llvm::Type::getVoidTy(ctx);
@@ -326,6 +330,51 @@ llvm::Value* Cast::codegen(GScope *scope, Generator *gen)
 			return gen->builder.CreateTrunc(val, targetType, "trunc");
 		}
 	}
+
+	return nullptr;
+}
+
+llvm::Value* Conditional::codegen(GScope *scope, Generator *gen)
+{
+
+	auto func = gen->builder.GetInsertBlock()->getParent();
+	auto mergeBB = llvm::BasicBlock::Create(gen->ctx, "if.end", func);
+
+	for (auto &condition: conditions)
+	{
+		auto* condBB = llvm::BasicBlock::Create(gen->ctx, "if.cond", func);
+		auto* thenBB = llvm::BasicBlock::Create(gen->ctx, "if.then", func);
+		auto* elseBB = llvm::BasicBlock::Create(gen->ctx, "if.else", func);
+		gen->builder.CreateBr(condBB);
+    gen->builder.SetInsertPoint(condBB);
+
+		if (condition.first)
+		{
+			GScope* condScope = new GScope(scope);
+      auto* condValue = condition.first->codegen(condScope, gen);
+      if (!condValue) return nullptr;
+
+			gen->builder.CreateCondBr(condValue, thenBB, elseBB);
+		}
+		else
+		{
+			gen->builder.CreateBr(thenBB);
+		}
+
+		gen->builder.SetInsertPoint(thenBB);
+
+		{
+			GScope* thenScope = new GScope(scope);
+			condition.second->codegen(thenScope, gen);
+			gen->builder.CreateBr(mergeBB);
+		}
+
+		gen->builder.SetInsertPoint(elseBB);
+
+	}
+
+	gen->builder.CreateBr(mergeBB);
+	gen->builder.SetInsertPoint(mergeBB);
 
 	return nullptr;
 }

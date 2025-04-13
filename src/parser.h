@@ -273,15 +273,13 @@ struct Cast: public ASTNode
 	}
 };
 
-
 struct Conditional: public ASTNode
 {
-	std::vector<std::pair<ASTNode *, ASTNode *>> conditions; // condition and block
-	ASTNode *elseBlock;
+	std::vector<std::pair<ASTNode *, Block *>> conditions; // condition and block
 
-	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	Conditional(std::vector<std::pair<ASTNode *, ASTNode *>> conditions, ASTNode *elseBlock)
-    : conditions(conditions), elseBlock(elseBlock) {}
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	Conditional(std::vector<std::pair<ASTNode *, Block *>> conditions) 
+    : conditions(conditions) {}
 
 	void print(int level) override
 	{
@@ -289,17 +287,19 @@ struct Conditional: public ASTNode
 
 		for (auto &condition: conditions)
 		{
-			indentPrint(level, "Condition: ");
-			condition.first->print(level + 2);
+			if (condition.first)
+			{
+				indentPrint(level, "Condition: ");
+				condition.first->print(level + 2);
+			} else {
+
+				indentPrint(level, "Else: ");
+			}
+
 			indentPrint(level, "Block: ");
 			condition.second->print(level + 2);
 		}
 
-		if (elseBlock)
-		{
-			indentPrint(level, "Else: ");
-			elseBlock->print(level + 2);
-		}
 	}
 };
 
@@ -355,6 +355,7 @@ private:
 	FunctionDefinition *parseFunction();
 	Assign *parseAssign();
 	FunctionCall *parseFunctionCall();
+	Conditional *parseConditional();
 	Block *parseBlock();
 	VariableDecl *parseVariableDecl();
 	Type *parseType();

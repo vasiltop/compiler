@@ -180,6 +180,30 @@ Block *FileParser::parseBlock()
 	return new Block(body);
 }
 
+Conditional *FileParser::parseConditional()
+{
+	std::vector<std::pair<ASTNode *, Block *>> conditions;
+
+	do 
+	{
+		ASTNode *cond = nullptr;
+
+		if (tokens[index].type == TOKEN_KEYWORD_IF)
+		{
+			index++;	
+			cond = parseExpression();
+		} 
+
+		auto block = parseBlock();
+		conditions.push_back({ cond, block });
+
+	} while (tokens[index++].type == TOKEN_KEYWORD_ELSE);
+
+	index--;
+
+	return new Conditional(conditions);
+}
+
 ASTNode *FileParser::parseLocal()
 {
 	switch (tokens[index].type)
@@ -214,8 +238,8 @@ ASTNode *FileParser::parseLocal()
 			return parseVariableDecl();
 		case TOKEN_LEFT_BRACE:
 			return parseBlock();
-		//case TOKEN_KEYWORD_IF:
-		//	return parseConditional();
+		case TOKEN_KEYWORD_IF:
+			return parseConditional();
 	}
 
 	Token p = tokens[index];

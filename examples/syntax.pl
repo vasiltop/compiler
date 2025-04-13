@@ -2,15 +2,16 @@ module "entry"
 import "std:io"
 
 main :: () i32 {
-	let a: i32 = 21321;
-	let b: ^i32 = &a;
-	
-	^b = 5;
-	io.print("%d\n", a);
+	let a: bool = true;
+	let b: bool = true;
 
-	^b = 7;
-	io.print("%d\n", ^b);
-	io.print("%d\n", a);
+	if false {
+		io.print("first\n");	
+	} else if b and a {
+		io.print("second\n");	
+	} else {
+		io.print("third\n");	
+	}
 
 	return 0;
 }
