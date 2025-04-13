@@ -144,6 +144,17 @@ Type *FileParser::parseType()
 		t->pointerLevel++;
 		index++;
 	}
+
+	if (tokens[index].type == TOKEN_LEFT_SQUARE_BRACKET)
+	{
+		index++;
+		auto arrayType = parseType();
+		expectConsume(TOKEN_SEMICOLON, "Expected semicolon in array type");
+		auto size = std::stoi(expectConsume(TOKEN_INT_LITERAL, "Expected array size").value);
+		expectConsume(TOKEN_RIGHT_SQUARE_BRACKET, "Expected closing bracket");
+
+		return new ArrayType(arrayType, size);
+	}
 	
 	auto tok = expectConsume(TOKEN_IDENTIFIER, "Expected type identifier");
 	t->name = tok.value;
@@ -298,6 +309,11 @@ VariableDecl *FileParser::parseVariableDecl()
 	expectConsume(TOKEN_COLON, "Expect colon for variable type");
 	auto type = parseType();
 	expectConsume(TOKEN_OPERATOR_ASSIGN, "Expect assign eq");
+
+	if (dynamic_cast<ArrayType *>(type))
+	{
+		std::cout << "AAAAAAAAAAAAAAAAAAA\n";
+	}
 	auto expr = parseExpression();
 	expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
 
@@ -402,6 +418,21 @@ ASTNode *FileParser::parsePrimary()
 				}
 
 				return new Variable(cur.value);
+			}
+		case TOKEN_LEFT_SQUARE_BRACKET:
+			{
+				std::vector<ASTNode *> values;
+				do {
+					values.push_back(parseExpression());
+					
+					if (tokens[index].type == TOKEN_COMMA)
+						index++;
+					
+				} while (tokens[index].type != TOKEN_RIGHT_SQUARE_BRACKET);
+
+				index++;
+
+				return new ArrayLiteral(values);
 			}
 	}
 

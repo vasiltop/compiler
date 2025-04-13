@@ -63,8 +63,8 @@ struct Type : public ASTNode
 	void print(int level) override
 	{
 		indentPrint(level, "Type:");
-		indentPrint(level + 1, "Level: " + std::to_string(pointerLevel));
-		indentPrint(level + 1, "Name: " + name);
+		indentPrint(level + 2, "Level: " + std::to_string(pointerLevel));
+		indentPrint(level + 2, "Name: " + name);
 	}
 
 	bool isSigned()
@@ -87,6 +87,15 @@ struct ArrayType : public Type
 {
 	Type* type;
 	int size;
+
+	ArrayType(Type *type, int size): type(type), size(size) {}
+
+	void print(int level) override
+	{
+		indentPrint(level, "Array Type:");
+		indentPrint(level + 2, "Level: " + std::to_string(pointerLevel));
+		type->print(level+2);
+	}
 };
 
 
@@ -165,6 +174,24 @@ struct Assign: public ASTNode
 		rhs->print(level + 1);
 	}
 };
+
+struct ArrayLiteral: public ASTNode
+{
+	std::vector<ASTNode *> values;
+
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	ArrayLiteral(std::vector<ASTNode *> values) : values(values) {}
+	void print(int level) override
+	{
+		indentPrint(level, "ArrayLiteral: ");
+
+		for (auto &v: values)
+		{
+			v->print(level + 2);
+		}
+	}
+};
+
 
 struct StringLiteral: public ASTNode
 {

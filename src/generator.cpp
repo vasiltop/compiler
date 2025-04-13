@@ -43,6 +43,15 @@ GType Generator::typeInfo(Type *type)
 	llvm::Type *ty = nullptr;
 	gType.depth = type->pointerLevel;
 
+	if (auto ar = dynamic_cast<ArrayType *>(type))
+	{
+		auto elemType = typeInfo(ar->type);
+		auto arrayType = llvm::ArrayType::get(elemType.type(ctx), ar->size);
+		gType.elementType = arrayType;
+
+		return gType;
+	}
+
 	if (type->name == "i64" || type->name == "u64")
 	{
 		ty = llvm::Type::getInt64Ty(ctx);
@@ -253,7 +262,6 @@ llvm::Value *BinaryExpr::codegen(GScope *scope, Generator *gen)
 							lhsValue, 
 							"ptr_add");
 				}
-				// Regular integer addition
 				return gen->builder.CreateAdd(lhsValue, rhsValue);
 			}
     case TOKEN_OPERATOR_MINUS:
@@ -486,17 +494,34 @@ llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
 	}
 }
 
+llvm::Value* ArrayLiteral::codegen(GScope *scope, Generator *gen)
+{
+	std::vector<llvm::Value *> elements;
+
+	for (auto val: values)
+	{
+		elements.push_back(val->codegen(scope, gen));
+	}
+
+	auto type = llvm::ArrayType::get(elements[0]->getType(), elements.size());
+	auto alloc = gen->builder.CreateAlloca(type);
+
+	for (size_t i = 0; i < elements.size(); ++i)
+	{
+		auto ptr = gen->builder.CreateGEP(type, alloc, {gen->builder.getInt32(0), gen->builder.getInt32(i)});
+		gen->builder.CreateStore(elements[i], ptr);
+	}
+
+	return gen->builder.CreateLoad(type, alloc);
+}
+
 llvm::Value* VariableDecl::codegen(GScope *scope, Generator *gen)
 {
 	auto ty = gen->typeInfo(type);
 	auto val = expr->codegen(scope, gen);
+	//ty.type(gen->ctx)->print(llvm::errs());
+	auto alloc = gen->builder.CreateAlloca(ty.type(gen->ctx));
 
-	if (scope->variables.count(varName))
-	{
-		return nullptr;
-	}
-
-	auto *alloc = gen->builder.CreateAlloca(ty.type(gen->ctx), nullptr, varName);
 	gen->builder.CreateStore(val, alloc);
 	scope->variables[varName] = std::pair{alloc, ty};
 
@@ -547,12 +572,10 @@ void Generator::displayFunctionSymbols()
 	 std::cout << "Function Symbols Map Contents:\n";
 	 std::cout << "=============================\n";
 
-	 // Iterate through outer map (module names)
 	 for (const auto& modulePair : functionSymbols) {
 		 const std::string& moduleName = modulePair.first;
 		 std::cout << "Module: " << moduleName << "\n";
 
-		 // Iterate through inner map (function names to Function*)
 		 for (const auto& functionPair : modulePair.second) {
 			 const std::string& functionName = functionPair.first;
 			 llvm::Function* func = functionPair.second;
@@ -560,7 +583,6 @@ void Generator::displayFunctionSymbols()
 			 std::cout << "  Function: " << functionName 
 				 << " (" << (void*)func << ")";
 
-			 // If you want to print more details about the function
 			 if (func) {
 				 std::cout << " - " << func->getName().str()
 					 << ", args: " << func->arg_size();
