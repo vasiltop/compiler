@@ -234,7 +234,8 @@ ASTNode *FileParser::parseLocal()
 			}
 		case TOKEN_IDENTIFIER:
 			{
-				if (tokens[index + 1].type == TOKEN_OPERATOR_ASSIGN)
+				if (tokens[index + 1].type == TOKEN_OPERATOR_ASSIGN
+						|| tokens[index + 1].type == TOKEN_LEFT_SQUARE_BRACKET)
 				{
 					return parseAssign();
 				}

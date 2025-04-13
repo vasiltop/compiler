@@ -440,7 +440,7 @@ llvm::Value* Assign::codegen(GScope *scope, Generator *gen)
 
 llvm::Value* VariableAccess::codegen(GScope *scope, Generator *gen)
 {
-	auto var = scope->getVar(varName); // alloc for the array, ArrayType
+	auto var = scope->getVar(varName);
 
 	for (auto& index: indexes)
 	{
@@ -457,6 +457,11 @@ llvm::Value* VariableAccess::codegen(GScope *scope, Generator *gen)
 		}
 	}
 	
+	if (gen->inReferenceContext)
+	{
+		return var.first;
+	}
+
 	return gen->builder.CreateLoad(var.second.elementType, var.first);
 }
 
