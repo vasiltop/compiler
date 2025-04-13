@@ -59,6 +59,12 @@ GType Generator::typeInfo(Type *type)
 	{
 		ty = llvm::Type::getInt8Ty(ctx);
 	}
+	else if (type->name == "f64") {
+		ty = llvm::Type::getDoubleTy(ctx);
+	}
+	else if (type->name == "f32") {
+		ty = llvm::Type::getFloatTy(ctx);
+	}
 	else if (type->name == "bool")
 	{
 		ty = llvm::Type::getInt1Ty(ctx);
@@ -71,6 +77,9 @@ GType Generator::typeInfo(Type *type)
 	{
 		ty = llvm::Type::getInt8Ty(ctx);
 		gType.depth = 1;
+	}
+	else if (type->name == "char") {
+    ty = llvm::Type::getInt8Ty(ctx);
 	}
 	
 	gType.elementType = ty;
@@ -183,6 +192,11 @@ llvm::Value* Block::codegen(GScope *scope, Generator *gen)
 llvm::Value* StringLiteral::codegen(GScope *scope, Generator *gen)
 {
 	return gen->builder.CreateGlobalStringPtr(value);	
+}
+
+llvm::Value* CharLiteral::codegen(GScope *scope, Generator *gen)
+{
+	return gen->builder.getInt8(value);
 }
 
 llvm::Value* IntLiteral::codegen(GScope *scope, Generator *gen)

@@ -383,6 +383,8 @@ ASTNode *FileParser::parsePrimary()
 			return new StringLiteral(cur.value);
 		case TOKEN_BOOL_LITERAL:
 			return new BoolLiteral(cur.value == "true");
+		case TOKEN_CHAR_LITERAL:
+			return new CharLiteral(cur.value[0]);
 		case TOKEN_AT:
 			return parseSpecial();
 		case TOKEN_LEFT_PAREN:

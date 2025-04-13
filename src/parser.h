@@ -55,7 +55,6 @@ struct Block: public ASTNode
 	}
 };
 
-
 struct Type : public ASTNode
 {
 	size_t pointerLevel;
@@ -83,6 +82,13 @@ struct Type : public ASTNode
 		return true;
 	}
 };
+
+struct ArrayType : public Type
+{
+	Type* type;
+	int size;
+};
+
 
 struct FunctionDefinition : public ASTNode
 {
@@ -169,6 +175,18 @@ struct StringLiteral: public ASTNode
 	void print(int level) override
 	{
 		indentPrint(level, "StringLiteral: " + value);
+	}
+};
+
+struct CharLiteral: public ASTNode
+{
+	char value;
+
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	CharLiteral(char value) : value(value) {}
+	void print(int level) override
+	{
+		indentPrint(level, "CharLiteral: " + value);
 	}
 };
 
