@@ -417,6 +417,20 @@ ASTNode *FileParser::parsePrimary()
 					return parseFunctionCall();
 				}
 
+				if (tokens[index].type == TOKEN_LEFT_SQUARE_BRACKET)
+				{
+					std::vector<ASTNode *> indexes;
+
+					while(tokens[index].type == TOKEN_LEFT_SQUARE_BRACKET)
+					{
+						expectConsume(TOKEN_LEFT_SQUARE_BRACKET, "Expected left square bracket");
+						indexes.push_back(new ArrayIndex(parseExpression()));
+						expectConsume(TOKEN_RIGHT_SQUARE_BRACKET, "Expected right square bracket");
+					}
+
+					return new VariableAccess(cur.value, indexes);
+				}
+
 				return new Variable(cur.value);
 			}
 		case TOKEN_LEFT_SQUARE_BRACKET:

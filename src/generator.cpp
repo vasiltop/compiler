@@ -430,13 +430,34 @@ llvm::Value* Conditional::codegen(GScope *scope, Generator *gen)
 
 llvm::Value* Assign::codegen(GScope *scope, Generator *gen)
 {
-
 	gen->inReferenceContext = true;
 	auto lvalue = lhs->codegen(scope, gen);
 	gen->inReferenceContext = false;
 
 	auto rvalue = rhs->codegen(scope, gen);
 	return gen->builder.CreateStore(rvalue, lvalue);
+}
+
+llvm::Value* VariableAccess::codegen(GScope *scope, Generator *gen)
+{
+	auto var = scope->getVar(varName); // alloc for the array, ArrayType
+
+	for (auto& index: indexes)
+	{
+		auto arrayIndex = dynamic_cast<ArrayIndex *>(index);
+		auto indexValue = arrayIndex->expr->codegen(scope, gen);
+		
+		auto ptr = gen->builder.CreateGEP(var.second.elementType, var.first, {gen->builder.getInt32(0), indexValue});
+
+		if (var.second.elementType->isArrayTy())
+		{
+			auto newType = var.second.elementType->getArrayElementType();
+			var.first = ptr;
+			var.second.elementType = newType;
+		}
+	}
+	
+	return gen->builder.CreateLoad(var.second.elementType, var.first);
 }
 
 llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)

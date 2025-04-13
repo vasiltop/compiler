@@ -229,6 +229,38 @@ struct Variable: public ASTNode
 	}
 };
 
+struct VariableAccess: public ASTNode
+{
+	std::string varName;
+	std::vector<ASTNode *> indexes;
+
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	VariableAccess(std::string varName, std::vector<ASTNode *> indexes) : varName(varName), indexes(indexes) {}
+
+	void print(int level) override
+	{
+		indentPrint(level, "Variable Access: " + varName);
+
+		for (auto &index: indexes)
+		{
+			index->print(level + 2);
+		}
+	}
+};
+
+struct ArrayIndex: public ASTNode
+{
+	ASTNode *expr;
+
+	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	ArrayIndex(ASTNode *expr) : expr(expr) {}
+	void print(int level) override
+	{
+		indentPrint(level, "Array Index: ");
+		expr->print(level + 2);
+	}
+};
+
 struct VariableDecl: public ASTNode
 {
 	std::string varName;
@@ -241,8 +273,8 @@ struct VariableDecl: public ASTNode
 	void print(int level) override
 	{
 		indentPrint(level, "Variable Decl: " + varName);
-		type->print(level + 1);
-		expr->print(level + 1);
+		type->print(level + 2);
+		expr->print(level + 2);
 	}
 };
 
