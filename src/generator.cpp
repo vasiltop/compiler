@@ -334,6 +334,33 @@ llvm::Value* Cast::codegen(GScope *scope, Generator *gen)
 	return nullptr;
 }
 
+
+llvm::Value* While::codegen(GScope *scope, Generator *gen)
+{
+	auto func = gen->builder.GetInsertBlock()->getParent();
+
+	GScope* whileScope = new GScope(scope);
+
+	auto condBlock = llvm::BasicBlock::Create(gen->ctx, "cond", func);
+	auto bodyBlock = llvm::BasicBlock::Create(gen->ctx, "body", func);
+	auto mergeBlock = llvm::BasicBlock::Create(gen->ctx, "merge", func);
+
+	gen->builder.CreateBr(condBlock);
+	gen->builder.SetInsertPoint(condBlock);
+
+	auto cond = condition->codegen(whileScope, gen);
+	gen->builder.CreateCondBr(cond, bodyBlock, mergeBlock);
+
+	gen->builder.SetInsertPoint(bodyBlock);
+
+	body->codegen(whileScope, gen);
+	gen->builder.CreateBr(condBlock);
+
+	gen->builder.SetInsertPoint(mergeBlock);
+
+	return nullptr;
+}
+
 llvm::Value* Conditional::codegen(GScope *scope, Generator *gen)
 {
 

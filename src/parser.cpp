@@ -180,6 +180,15 @@ Block *FileParser::parseBlock()
 	return new Block(body);
 }
 
+While *FileParser::parseWhile()
+{
+	expectConsume(TOKEN_KEYWORD_WHILE, "");
+	auto condition = parseExpression();	
+	auto body = parseBlock();
+
+	return new While(condition, body);
+}
+
 Conditional *FileParser::parseConditional()
 {
 	std::vector<std::pair<ASTNode *, Block *>> conditions;
@@ -240,6 +249,8 @@ ASTNode *FileParser::parseLocal()
 			return parseBlock();
 		case TOKEN_KEYWORD_IF:
 			return parseConditional();
+		case TOKEN_KEYWORD_WHILE:
+			return parseWhile();
 	}
 
 	Token p = tokens[index];

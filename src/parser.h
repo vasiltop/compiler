@@ -273,6 +273,22 @@ struct Cast: public ASTNode
 	}
 };
 
+struct While: public ASTNode
+{
+	ASTNode* condition;
+	Block* body;
+
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	While(ASTNode *condition, Block *body): condition(condition), body(body) {}
+
+	void print(int level) override
+	{
+		indentPrint(level, "While: ");
+		condition->print(level + 2);
+		body->print(level + 2);
+	}
+};
+
 struct Conditional: public ASTNode
 {
 	std::vector<std::pair<ASTNode *, Block *>> conditions; // condition and block
@@ -357,6 +373,7 @@ private:
 	FunctionCall *parseFunctionCall();
 	Conditional *parseConditional();
 	Block *parseBlock();
+	While *parseWhile();
 	VariableDecl *parseVariableDecl();
 	Type *parseType();
 };
