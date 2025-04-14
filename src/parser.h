@@ -148,6 +148,27 @@ struct FunctionCall : public ASTNode
 	}
 };
 
+struct StructDefinition : public ASTNode
+{
+	std::string name;
+	std::vector<std::string> fieldNames;
+	std::vector<Type *> fieldTypes;
+
+	// llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	StructDefinition(std::string name, std::vector<std::string> fieldNames, std::vector<Type *> fieldTypes) : name(name), fieldNames(fieldNames), fieldTypes(fieldTypes) {}
+		
+	void print(int level) override
+	{
+		indentPrint(level, "Struct Decl: " + name);
+
+		for (size_t i = 0; i < fieldNames.size(); ++i)
+		{
+			indentPrint(level + 2, "Field name: " + fieldNames[i]);
+			fieldTypes[i]->print(level + 2);
+		}
+	}
+};
+
 struct Return : public ASTNode
 {
 	ASTNode *expr;
@@ -245,6 +266,39 @@ struct VariableAccess: public ASTNode
 		{
 			index->print(level + 2);
 		}
+	}
+};
+
+struct StructLiteral : public ASTNode
+{
+	std::string name;
+	std::vector<std::string> fieldNames;
+	std::vector<ASTNode *> fieldExprs;
+
+	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	StructLiteral(std::string name, std::vector<std::string> fieldNames, std::vector<ASTNode *> fieldExprs) : name(name), fieldNames(fieldNames), fieldExprs(fieldExprs) {}
+
+	void print(int level) override
+	{
+		indentPrint(level, "Struct Literal: " + name);
+
+		for (size_t i = 0; i < fieldNames.size(); ++i)
+		{
+			indentPrint(level + 2, "Field: " + fieldNames[i]);
+			fieldExprs[i]->print(level + 2);
+		}
+	}
+};
+
+struct StructField : public ASTNode
+{
+	std::string fieldName;
+
+	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	StructField(std::string fieldName) : fieldName(fieldName) {}
+	void print(int level) override
+	{
+		indentPrint(level, "Struct Field: " + fieldName);
 	}
 };
 
@@ -446,6 +500,7 @@ private:
 	ASTNode *parsePrimary();
 	ASTNode *parseSpecial();
 	FunctionDefinition *parseFunction();
+	StructDefinition *parseStruct();
 	Assign *parseAssign();
 	FunctionCall *parseFunctionCall();
 	Conditional *parseConditional();

@@ -74,7 +74,10 @@ ASTNode *FileParser::parseGlobal()
 	switch (cur.type)
 	{
 		case TOKEN_IDENTIFIER:
+			if (tokens[index + 3].type == TOKEN_LEFT_PAREN)
 				return parseFunction();
+			else if (tokens[index + 3].type == TOKEN_KEYWORD_STRUCT)
+				return parseStruct();
 		break;
 	}
 
@@ -90,7 +93,36 @@ ASTNode *FileParser::parseGlobal()
 
 }
 
-FunctionDefinition *FileParser::parseFunction() {
+StructDefinition *FileParser::parseStruct()
+{
+	auto name = expectConsume(TOKEN_IDENTIFIER, "").value;
+	std::vector<std::string> fieldNames;
+	std::vector<Type *> fieldTypes;
+
+	expectConsume(TOKEN_COLON, "Expected colon after name");
+	expectConsume(TOKEN_COLON, "Expected colon after name");
+	
+	expectConsume(TOKEN_KEYWORD_STRUCT, "");
+
+	expectConsume(TOKEN_LEFT_BRACE, "Expected colon after name");
+
+	while (tokens[index].type != TOKEN_RIGHT_BRACE)
+	{
+		fieldNames.push_back(expectConsume(TOKEN_IDENTIFIER, "").value);
+		expectConsume(TOKEN_COLON, "Expected colon after name");
+		fieldTypes.push_back(parseType());
+
+		if (tokens[index].type == TOKEN_COMMA)
+			expectConsume(TOKEN_COMMA, "Expected comma after field");
+	}
+	
+	expectConsume(TOKEN_RIGHT_BRACE, "Expected colon after name");
+
+	return new StructDefinition(name, fieldNames, fieldTypes);
+}
+
+FunctionDefinition *FileParser::parseFunction()
+{
 	
 	FunctionDefinition *def = new FunctionDefinition;
 	def->body = nullptr;
@@ -235,7 +267,8 @@ ASTNode *FileParser::parseLocal()
 		case TOKEN_IDENTIFIER:
 			{
 				if (tokens[index + 1].type == TOKEN_OPERATOR_ASSIGN
-						|| tokens[index + 1].type == TOKEN_LEFT_SQUARE_BRACKET)
+						|| tokens[index + 1].type == TOKEN_LEFT_SQUARE_BRACKET
+						|| tokens[index + 1].type == TOKEN_DOT)
 				{
 					return parseAssign();
 				}
@@ -281,7 +314,7 @@ FunctionCall *FileParser::parseFunctionCall()
 	FunctionCall *call = new FunctionCall;
 
 	call->moduleName = expectConsume(TOKEN_IDENTIFIER, "Provide a module for the function call").value;
-	expectConsume(TOKEN_DOT, "Expected dot after module name");
+	expectConsume(TOKEN_COLON, "Expected colon after module name");
 	call->name = expectConsume(TOKEN_IDENTIFIER, "Provide an identifier for the function call").value;
 
 	expectConsume(TOKEN_LEFT_PAREN, "Expected opening function paren");
@@ -412,25 +445,54 @@ ASTNode *FileParser::parsePrimary()
 			}
 		case TOKEN_IDENTIFIER:
 			{
-				if (tokens[index].type == TOKEN_DOT)
+				if (tokens[index].type == TOKEN_LEFT_BRACE)
+				{
+					expectConsume(TOKEN_LEFT_BRACE, "Expected left square bracket");
+
+					std::vector<std::string> fieldNames;
+					std::vector<ASTNode *> fieldExprs;
+
+					while (tokens[index].type != TOKEN_RIGHT_BRACE)
+					{
+						fieldNames.push_back(expectConsume(TOKEN_IDENTIFIER, "").value);
+						expectConsume(TOKEN_COLON, "Expected colon after name");
+						fieldExprs.push_back(parseExpression());
+
+						if (tokens[index].type == TOKEN_COMMA)
+							expectConsume(TOKEN_COMMA, "Expected comma after field");
+					}
+					
+					expectConsume(TOKEN_RIGHT_BRACE, "Expected left square bracket");
+
+					return new StructLiteral(cur.value, fieldNames, fieldExprs);
+				}
+
+				if (tokens[index].type == TOKEN_COLON)
 				{
 					index--;
 					return parseFunctionCall();
 				}
 
-				if (tokens[index].type == TOKEN_LEFT_SQUARE_BRACKET)
+				std::vector<ASTNode *> indexes;
+
+				while(tokens[index].type == TOKEN_LEFT_SQUARE_BRACKET
+						|| tokens[index].type == TOKEN_DOT)
 				{
-					std::vector<ASTNode *> indexes;
-
-					while(tokens[index].type == TOKEN_LEFT_SQUARE_BRACKET)
-					{
-						expectConsume(TOKEN_LEFT_SQUARE_BRACKET, "Expected left square bracket");
-						indexes.push_back(new ArrayIndex(parseExpression()));
-						expectConsume(TOKEN_RIGHT_SQUARE_BRACKET, "Expected right square bracket");
+					switch (tokens[index].type) {
+						case TOKEN_LEFT_SQUARE_BRACKET:
+							expectConsume(TOKEN_LEFT_SQUARE_BRACKET, "Expected left square bracket");
+							indexes.push_back(new ArrayIndex(parseExpression()));
+							expectConsume(TOKEN_RIGHT_SQUARE_BRACKET, "Expected right square bracket");
+							break;
+						case TOKEN_DOT:
+							expectConsume(TOKEN_DOT, "");
+							indexes.push_back(new StructField(expectConsume(TOKEN_IDENTIFIER, "Expected Identifier").value));
+							break;
 					}
+									}
 
+				if (indexes.size())
 					return new VariableAccess(cur.value, indexes);
-				}
 
 				return new Variable(cur.value);
 			}
