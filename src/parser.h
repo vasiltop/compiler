@@ -60,6 +60,8 @@ struct Type : public ASTNode
 	size_t pointerLevel;
 	std::string name;
 
+	Type(size_t pointerLevel, std::string name) : pointerLevel(pointerLevel), name(name) {}
+
 	void print(int level) override
 	{
 		indentPrint(level, "Type:");
@@ -88,7 +90,7 @@ struct ArrayType : public Type
 	Type* type;
 	int size;
 
-	ArrayType(Type *type, int size): type(type), size(size) {}
+	ArrayType(Type *type, int size, size_t pointerLevel): Type(pointerLevel, ""), type(type), size(size) {}
 
 	void print(int level) override
 	{
@@ -98,6 +100,20 @@ struct ArrayType : public Type
 	}
 };
 
+struct StructType : public Type
+{
+	std::string moduleName;
+
+	StructType(std::string moduleName, std::string structName, size_t pointerLevel) : Type(pointerLevel, structName), moduleName(moduleName) {}
+
+	void print(int level) override
+	{
+		indentPrint(level, "Struct Type:");
+		indentPrint(level + 2, "Level: " + std::to_string(pointerLevel));
+		indentPrint(level + 2, "Module: " + moduleName);
+		indentPrint(level + 2, "Name: " + name);
+	}
+};
 
 struct FunctionDefinition : public ASTNode
 {
@@ -151,11 +167,13 @@ struct FunctionCall : public ASTNode
 struct StructDefinition : public ASTNode
 {
 	std::string name;
+	std::string moduleName;
 	std::vector<std::string> fieldNames;
 	std::vector<Type *> fieldTypes;
+	
 
 	// llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	StructDefinition(std::string name, std::vector<std::string> fieldNames, std::vector<Type *> fieldTypes) : name(name), fieldNames(fieldNames), fieldTypes(fieldTypes) {}
+	StructDefinition(std::string name, std::string moduleName, std::vector<std::string> fieldNames, std::vector<Type *> fieldTypes) : name(name), moduleName(moduleName), fieldNames(fieldNames), fieldTypes(fieldTypes) {}
 		
 	void print(int level) override
 	{
@@ -271,16 +289,18 @@ struct VariableAccess: public ASTNode
 
 struct StructLiteral : public ASTNode
 {
+	std::string moduleName;
 	std::string name;
 	std::vector<std::string> fieldNames;
 	std::vector<ASTNode *> fieldExprs;
 
 	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	StructLiteral(std::string name, std::vector<std::string> fieldNames, std::vector<ASTNode *> fieldExprs) : name(name), fieldNames(fieldNames), fieldExprs(fieldExprs) {}
+	StructLiteral(std::string moduleName, std::string name, std::vector<std::string> fieldNames, std::vector<ASTNode *> fieldExprs) : moduleName(moduleName), name(name), fieldNames(fieldNames), fieldExprs(fieldExprs) {}
 
 	void print(int level) override
 	{
 		indentPrint(level, "Struct Literal: " + name);
+		indentPrint(level + 2, "Module: " + moduleName);
 
 		for (size_t i = 0; i < fieldNames.size(); ++i)
 		{
@@ -455,6 +475,7 @@ struct FileInfo
 	std::filesystem::path path;
 	std::vector<ASTNode *> nodes;
 	std::set<std::string> functionSymbols;
+	std::set<std::string> structSymbols;
 };
 
 class Parser
@@ -467,10 +488,8 @@ public:
 
 	std::vector<FileInfo> files;
 	std::set<std::string> parsedFiles;
-	std::set<std::string> functionSymbols(std::filesystem::path path);
 	std::map<std::filesystem::path, std::string> pathToModule;
 	std::filesystem::path compilerPath;
-
 };
 
 class FileParser
@@ -479,6 +498,7 @@ public:
 	FileParser(std::vector<Token> tokens, std::filesystem::path path, Parser *parser);
 	std::vector<ASTNode *> parse();
 	std::set<std::string> functionSymbols;
+	std::set<std::string> structSymbols;
 
 private:
 	Parser *parser;
@@ -506,6 +526,7 @@ private:
 	Conditional *parseConditional();
 	Block *parseBlock();
 	While *parseWhile();
+	StructLiteral *parseStructLiteral();
 	VariableDecl *parseVariableDecl();
 	Type *parseType();
 };

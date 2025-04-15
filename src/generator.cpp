@@ -96,7 +96,7 @@ GType Generator::typeInfo(Type *type)
 	return gType;
 }
 
-void Generator::generateFunctionDefinitions()
+void Generator::generateDefinitions()
 {
 	for (auto fileInfo: parser->files)
 	{
@@ -104,9 +104,8 @@ void Generator::generateFunctionDefinitions()
 
 		for (auto node: fileInfo.nodes)
 		{
-			if (dynamic_cast<FunctionDefinition*>(node) != nullptr)
+			if (auto func = dynamic_cast<FunctionDefinition*>(node))
 			{
-				auto func = static_cast<FunctionDefinition *>(node);
 				std::vector<llvm::Type *> paramTypes;
 
 				for (auto type: func->paramTypes)
@@ -119,13 +118,33 @@ void Generator::generateFunctionDefinitions()
 
 				functionSymbols[moduleName][func->name] = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, func->name, module);
 			}
+			else if (auto structDef = dynamic_cast<StructDefinition *>(node))
+			{
+				std::vector<llvm::Type *> memberTypes;
+
+				for (auto &type: structDef->fieldTypes)
+				{
+					auto ty = typeInfo(type);
+					memberTypes.push_back(ty.type(ctx));
+				}
+
+				/*
+				std::vector<std::string> memberNames;
+				for (auto &member : members)
+				{
+					memberNames.push_back(member->name);
+				}
+				*/
+
+				structSymbols[moduleName][structDef->name] = llvm::StructType::create(ctx, memberTypes, structDef->name);
+			}
 		}
 	}
 }
 
 void Generator::generate()
 {
-	generateFunctionDefinitions();
+	generateDefinitions();
 
 
 	for (auto fileInfo: parser->files)

@@ -7,7 +7,7 @@ Test :: struct {
 }
 
 main :: () i32 {
-	let a: Test = Test { a: [1], b: 5 };
+	let a: entry:Test = entry:Test { a: [1], b: 5 };
 
 	io:print("%d\n", a.a[0]);
 	a.a = 5;

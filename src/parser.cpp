@@ -96,6 +96,10 @@ ASTNode *FileParser::parseGlobal()
 StructDefinition *FileParser::parseStruct()
 {
 	auto name = expectConsume(TOKEN_IDENTIFIER, "").value;
+	auto moduleName = parser->pathToModule[path];
+
+	structSymbols.insert(name);
+
 	std::vector<std::string> fieldNames;
 	std::vector<Type *> fieldTypes;
 
@@ -118,7 +122,7 @@ StructDefinition *FileParser::parseStruct()
 	
 	expectConsume(TOKEN_RIGHT_BRACE, "Expected colon after name");
 
-	return new StructDefinition(name, fieldNames, fieldTypes);
+	return new StructDefinition(name, moduleName, fieldNames, fieldTypes);
 }
 
 FunctionDefinition *FileParser::parseFunction()
@@ -168,7 +172,7 @@ FunctionDefinition *FileParser::parseFunction()
 
 Type *FileParser::parseType()
 {
-	Type *t = new Type;
+	Type *t = new Type(0, "");
 	t->pointerLevel = 0;
 	
 	while (tokens[index].type == TOKEN_POINTER)
@@ -185,11 +189,20 @@ Type *FileParser::parseType()
 		auto size = std::stoi(expectConsume(TOKEN_INT_LITERAL, "Expected array size").value);
 		expectConsume(TOKEN_RIGHT_SQUARE_BRACKET, "Expected closing bracket");
 
-		return new ArrayType(arrayType, size);
+		return new ArrayType(arrayType, size, t->pointerLevel);
 	}
 	
-	auto tok = expectConsume(TOKEN_IDENTIFIER, "Expected type identifier");
-	t->name = tok.value;
+	auto name = expectConsume(TOKEN_IDENTIFIER, "Expected type identifier").value;
+
+	if (tokens[index].type == TOKEN_COLON)
+	{
+		index++;
+		auto structName = expectConsume(TOKEN_IDENTIFIER, "Expected type identifier").value;
+
+		return new StructType(name, structName, t->pointerLevel);
+	}
+
+	t->name = name;
 
 	return t;
 }
@@ -445,32 +458,21 @@ ASTNode *FileParser::parsePrimary()
 			}
 		case TOKEN_IDENTIFIER:
 			{
-				if (tokens[index].type == TOKEN_LEFT_BRACE)
-				{
-					expectConsume(TOKEN_LEFT_BRACE, "Expected left square bracket");
-
-					std::vector<std::string> fieldNames;
-					std::vector<ASTNode *> fieldExprs;
-
-					while (tokens[index].type != TOKEN_RIGHT_BRACE)
-					{
-						fieldNames.push_back(expectConsume(TOKEN_IDENTIFIER, "").value);
-						expectConsume(TOKEN_COLON, "Expected colon after name");
-						fieldExprs.push_back(parseExpression());
-
-						if (tokens[index].type == TOKEN_COMMA)
-							expectConsume(TOKEN_COMMA, "Expected comma after field");
-					}
-					
-					expectConsume(TOKEN_RIGHT_BRACE, "Expected left square bracket");
-
-					return new StructLiteral(cur.value, fieldNames, fieldExprs);
-				}
-
 				if (tokens[index].type == TOKEN_COLON)
 				{
-					index--;
-					return parseFunctionCall();
+					index++;
+					expectConsume(TOKEN_IDENTIFIER, "Expected struct or function name.");
+					if (tokens[index].type == TOKEN_LEFT_PAREN)
+					{
+						index -= 3;
+						return parseFunctionCall();
+					}
+					else if (tokens[index].type == TOKEN_LEFT_BRACE)
+					{
+						index -= 3;
+						return parseStructLiteral();
+
+					}
 				}
 
 				std::vector<ASTNode *> indexes;
@@ -514,6 +516,33 @@ ASTNode *FileParser::parsePrimary()
 	}
 
 	return nullptr;
+}
+
+StructLiteral *FileParser::parseStructLiteral()
+{
+	auto moduleName = expectConsume(TOKEN_IDENTIFIER, "Expected ident").value;
+	expectConsume(TOKEN_COLON, "");
+	auto name = expectConsume(TOKEN_IDENTIFIER, "Expected ident").value;
+
+	expectConsume(TOKEN_LEFT_BRACE, "Expected left square bracket");
+
+	std::vector<std::string> fieldNames;
+	std::vector<ASTNode *> fieldExprs;
+
+	while (tokens[index].type != TOKEN_RIGHT_BRACE)
+	{
+		fieldNames.push_back(expectConsume(TOKEN_IDENTIFIER, "").value);
+		expectConsume(TOKEN_COLON, "Expected colon after name");
+		fieldExprs.push_back(parseExpression());
+
+		if (tokens[index].type == TOKEN_COMMA)
+			expectConsume(TOKEN_COMMA, "Expected comma after field");
+	}
+
+	expectConsume(TOKEN_RIGHT_BRACE, "Expected left square bracket");
+
+	return new StructLiteral(moduleName, name, fieldNames, fieldExprs);
+
 }
 
 ASTNode *FileParser::parseSpecial()
@@ -587,20 +616,6 @@ bool Parser::isParsed(std::filesystem::path path)
 	return false;
 }
 
-std::set<std::string> Parser::functionSymbols(std::filesystem::path path)
-{
-
-	for (auto file: files)
-	{
-		if (file.path == path)
-		{
-			return file.functionSymbols;
-		}
-	}
-
-	return {};
-}
-
 void Parser::parse(std::filesystem::path p)
 {
 	//std::cout << "Beginning to parse: " << p << "\n";
@@ -616,6 +631,6 @@ void Parser::parse(std::filesystem::path p)
 //	}
 //	std::cout << std::endl;
 
-	FileInfo file = { p, ast, fileParser.functionSymbols };
+	FileInfo file = { p, ast, fileParser.functionSymbols, fileParser.structSymbols };
 	files.push_back(file);
 }

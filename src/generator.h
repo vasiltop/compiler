@@ -45,6 +45,7 @@ public:
 
 	void displayFunctionSymbols();
 	std::map<std::string, std::map<std::string, llvm::Function *>> functionSymbols;
+	std::map<std::string, std::map<std::string, llvm::StructType *>> structSymbols;
 	GType typeInfo(Type *type);
 	GType expressionType(ASTNode *node, GScope *scope);
 
@@ -52,7 +53,7 @@ public:
 
 private:
 	Parser *parser;
-	void generateFunctionDefinitions();
+	void generateDefinitions();
 };
 
 #endif
