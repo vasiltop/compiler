@@ -294,7 +294,7 @@ struct StructLiteral : public ASTNode
 	std::vector<std::string> fieldNames;
 	std::vector<ASTNode *> fieldExprs;
 
-	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	StructLiteral(std::string moduleName, std::string name, std::vector<std::string> fieldNames, std::vector<ASTNode *> fieldExprs) : moduleName(moduleName), name(name), fieldNames(fieldNames), fieldExprs(fieldExprs) {}
 
 	void print(int level) override

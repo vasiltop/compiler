@@ -52,6 +52,12 @@ GType Generator::typeInfo(Type *type)
 		return gType;
 	}
 
+	if (auto st = dynamic_cast<StructType *>(type))
+	{
+		gType.elementType = structSymbols[st->moduleName][st->name].type;
+		return gType;
+	}
+
 	if (type->name == "i64" || type->name == "u64")
 	{
 		ty = llvm::Type::getInt64Ty(ctx);
@@ -128,15 +134,8 @@ void Generator::generateDefinitions()
 					memberTypes.push_back(ty.type(ctx));
 				}
 
-				/*
-				std::vector<std::string> memberNames;
-				for (auto &member : members)
-				{
-					memberNames.push_back(member->name);
-				}
-				*/
-
-				structSymbols[moduleName][structDef->name] = llvm::StructType::create(ctx, memberTypes, structDef->name);
+				std::string name = structDef->moduleName + ":" + structDef->name;
+				structSymbols[moduleName][structDef->name] = {llvm::StructType::create(ctx, memberTypes, name), structDef->fieldNames};
 			}
 		}
 	}
@@ -463,16 +462,39 @@ llvm::Value* VariableAccess::codegen(GScope *scope, Generator *gen)
 
 	for (auto& index: indexes)
 	{
-		auto arrayIndex = dynamic_cast<ArrayIndex *>(index);
-		auto indexValue = arrayIndex->expr->codegen(scope, gen);
-		
-		auto ptr = gen->builder.CreateGEP(var.second.elementType, var.first, {gen->builder.getInt32(0), indexValue});
-
-		if (var.second.elementType->isArrayTy())
+		if (auto arrayIndex = dynamic_cast<ArrayIndex *>(index))
 		{
-			auto newType = var.second.elementType->getArrayElementType();
-			var.first = ptr;
-			var.second.elementType = newType;
+			auto indexValue = arrayIndex->expr->codegen(scope, gen);
+
+			auto ptr = gen->builder.CreateGEP(var.second.elementType, var.first, {gen->builder.getInt32(0), indexValue});
+
+			if (var.second.elementType->isArrayTy())
+			{
+				auto newType = var.second.elementType->getArrayElementType();
+				var.first = ptr;
+				var.second.elementType = newType;
+			}
+		}
+		else if (auto structField = dynamic_cast<StructField *>(index))
+		{
+			llvm::StructType* structType = llvm::cast<llvm::StructType>(var.second.elementType);
+
+			auto fullName = structType->getName();
+			size_t colonPos = fullName.find(':');
+			auto module = fullName.substr(0, colonPos);
+      auto name = fullName.substr(colonPos + 1);
+
+			StructInfo info = gen->structSymbols[module.str()][name.str()];
+			unsigned int fieldIndex = info.getFieldIndex(structField->fieldName);
+
+			var.first = gen->builder.CreateStructGEP(
+					structType,
+					var.first,
+					fieldIndex,
+					varName + "." + structField->fieldName
+					);
+
+			var.second.elementType = structType->getElementType(fieldIndex);
 		}
 	}
 	
@@ -558,6 +580,42 @@ llvm::Value* ArrayLiteral::codegen(GScope *scope, Generator *gen)
 	}
 
 	return gen->builder.CreateLoad(type, alloc);
+}
+
+unsigned int StructInfo::getFieldIndex(std::string fieldName)
+{
+	int fieldIndex = -1;
+
+	for (unsigned i = 0; i < fieldNames.size(); i++) {
+		if (fieldNames[i] == fieldName) {
+			fieldIndex = i;
+			break;
+		}
+	}
+
+	return fieldIndex;
+}
+
+llvm::Value* StructLiteral::codegen(GScope *scope, Generator *gen)
+{
+	StructInfo info = gen->structSymbols[moduleName][name];
+	llvm::Value* alloc = gen->builder.CreateAlloca(info.type);
+
+	for (size_t i = 0; i < fieldNames.size(); ++i) {
+		unsigned int fieldIndex = info.getFieldIndex(fieldNames[i]);
+		llvm::Value* fieldValue = fieldExprs[i]->codegen(scope, gen);
+
+		llvm::Value* fieldPtr = gen->builder.CreateStructGEP(
+				info.type,
+				alloc,
+				fieldIndex,
+				"structfield." + fieldNames[i]
+				);
+
+		gen->builder.CreateStore(fieldValue, fieldPtr);
+	}
+	
+	return gen->builder.CreateLoad(info.type, alloc);
 }
 
 llvm::Value* VariableDecl::codegen(GScope *scope, Generator *gen)

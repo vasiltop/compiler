@@ -32,6 +32,14 @@ struct GScope
 	std::pair<llvm::Value *, GType> getVar(std::string name);
 };
 
+struct StructInfo
+{
+	llvm::StructType *type;
+	std::vector<std::string> fieldNames;
+
+	unsigned int getFieldIndex(std::string fieldName);
+};
+
 class Generator
 {
 public:
@@ -45,7 +53,7 @@ public:
 
 	void displayFunctionSymbols();
 	std::map<std::string, std::map<std::string, llvm::Function *>> functionSymbols;
-	std::map<std::string, std::map<std::string, llvm::StructType *>> structSymbols;
+	std::map<std::string, std::map<std::string, StructInfo>> structSymbols;
 	GType typeInfo(Type *type);
 	GType expressionType(ASTNode *node, GScope *scope);
 
