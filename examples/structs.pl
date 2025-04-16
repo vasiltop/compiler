@@ -6,14 +6,14 @@ Other :: struct {
 }
 
 Test :: struct {
-	b: entry:Other
-	other: entry:Other
+	b: Other
+	other: Other
 }
 
 main :: () i32 {
-	let a: entry:Test = entry:Test { 
-		b: entry:Other { b: [1, 2] }
-		other: entry:Other { b: [3, 4] }
+	let a: Test = Test { 
+		b: Other { b: [1, 2] }
+		other: Other { b: [3, 4] }
 	};
 
 	io:print("%d\n", a.b.b[1]);
