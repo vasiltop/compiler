@@ -1,7 +1,0 @@
-struct Test {
-	a: i32
-}
-
-fn main() i32 {
-
-} 
