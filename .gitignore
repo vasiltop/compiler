@@ -4,3 +4,4 @@ build
 out.ll
 a.out
 todo
+/bazel-*

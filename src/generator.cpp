@@ -120,7 +120,7 @@ void Generator::generateDefinitions()
 				}
 
 				llvm::Type *returnType = typeInfo(func->returnType).type(ctx);
-				llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, paramTypes, false);
+				llvm::FunctionType *funcType = llvm::FunctionType::get(returnType, paramTypes, true);
 
 				functionSymbols[moduleName][func->name] = llvm::Function::Create(funcType, llvm::Function::ExternalLinkage, func->name, module);
 			}
