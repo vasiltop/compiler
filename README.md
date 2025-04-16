@@ -24,7 +24,7 @@ Code examples can be found in the examples directory.
 ## Variables
 
 ```rust
-message: u8^ = "Hello, world!";
+message: string = "Hello, world!";
 ```
 
 ## Control Flow
@@ -46,25 +46,21 @@ while i < 10 {
 
 ```rust
 add :: (a: i32, b: i32) i32 {
-    ret a + b;
+    return a + b;
 }
 
 main :: () i32 {
-    added := add(4, 2);
-    ret 0;
+    let added: i32 = add(4, 2);
+    return 0;
 }
 ```
 
-## Structs
+## Arrays
 
 ```rust
-Test :: {
-    a: i32,
-    b: i32
-}
-
 main :: () i32 {
-    b := Test { a: 1, b: 5 };
-    ret b.a;
+    let a: [i32; 2] = [2, 4];
+
+    return 0;
 }
 ```
