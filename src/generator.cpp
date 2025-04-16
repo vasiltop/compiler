@@ -599,6 +599,12 @@ unsigned int StructInfo::getFieldIndex(std::string fieldName)
 llvm::Value* StructLiteral::codegen(GScope *scope, Generator *gen)
 {
 	StructInfo info = gen->structSymbols[moduleName][name];
+
+	if (!info.type)
+	{
+		std::cout << "Struct type does not exist!\n";
+	}
+
 	llvm::Value* alloc = gen->builder.CreateAlloca(info.type);
 
 	for (size_t i = 0; i < fieldNames.size(); ++i) {
@@ -622,7 +628,6 @@ llvm::Value* VariableDecl::codegen(GScope *scope, Generator *gen)
 {
 	auto ty = gen->typeInfo(type);
 	auto val = expr->codegen(scope, gen);
-	//ty.type(gen->ctx)->print(llvm::errs());
 	auto alloc = gen->builder.CreateAlloca(ty.type(gen->ctx));
 
 	gen->builder.CreateStore(val, alloc);
