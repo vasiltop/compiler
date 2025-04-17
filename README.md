@@ -1,5 +1,7 @@
 # jolt
 
+Jolt is a statically-typed, natively compiled language designed for performance-critical applications where precise memory control is essential. The language provides manual memory management without garbage collection, giving developers complete authority over their code.
+
 ## Installation
 
 ```bash
