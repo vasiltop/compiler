@@ -1,6 +1,4 @@
-# Compiler 
-
-A statically typed, compiled programming language. 
+# jolt
 
 ## Installation
 
