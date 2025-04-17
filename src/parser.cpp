@@ -69,7 +69,7 @@ std::vector<ASTNode *> FileParser::parse()
 
 ASTNode *FileParser::parseGlobal()
 {
-	Token cur = tokens[index];
+Token cur = tokens[index];
 
 	switch (cur.type)
 	{
@@ -201,12 +201,37 @@ Type *FileParser::parseType()
 
 		return new StructType(name, structName, t->pointerLevel);
 	}
+	else if (!isBuiltInType(name))
+	{
+		return new StructType(parser->pathToModule[path], name, t->pointerLevel);
+	}
 
 	t->name = name;
 
 	return t;
 }
 
+bool FileParser::isBuiltInType(std::string &t)
+{
+	std::vector<std::string> types = {
+		"i64",
+		"u64",
+		"i32",
+		"u32",
+		"i16",
+		"u16",
+		"i8",
+		"u8",
+		"f64",
+		"f32",
+		"bool",
+		"void",
+		"string",
+		"char"
+	};
+
+	return std::find(types.begin(), types.end(), t) != types.end();
+}
 
 Assign *FileParser::parseAssign()
 {
@@ -279,15 +304,24 @@ ASTNode *FileParser::parseLocal()
 			}
 		case TOKEN_IDENTIFIER:
 			{
+				if (tokens[index + 1].type == TOKEN_LEFT_PAREN)
+				{
+					auto f = parseFunctionCall(parser->pathToModule[path]);
+					expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
+					return f;
+				}
 				if (tokens[index + 1].type == TOKEN_OPERATOR_ASSIGN
 						|| tokens[index + 1].type == TOKEN_LEFT_SQUARE_BRACKET
 						|| tokens[index + 1].type == TOKEN_DOT)
 				{
 					return parseAssign();
 				}
-				else
+				
+				if (tokens[index + 1].type == TOKEN_COLON)
 				{
-					FunctionCall *f = parseFunctionCall();
+					auto module = tokens[index].value;
+					index += 2;
+					FunctionCall *f = parseFunctionCall(module);
 					expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
 					return f;
 				}
@@ -322,12 +356,11 @@ ASTNode *FileParser::parseLocal()
 	exit(1);
 }
 
-FunctionCall *FileParser::parseFunctionCall()
+FunctionCall *FileParser::parseFunctionCall(std::string &module)
 {
 	FunctionCall *call = new FunctionCall;
 
-	call->moduleName = expectConsume(TOKEN_IDENTIFIER, "Provide a module for the function call").value;
-	expectConsume(TOKEN_COLON, "Expected colon after module name");
+	call->moduleName = module;
 	call->name = expectConsume(TOKEN_IDENTIFIER, "Provide an identifier for the function call").value;
 
 	expectConsume(TOKEN_LEFT_PAREN, "Expected opening function paren");
@@ -436,6 +469,7 @@ ASTNode *FileParser::parseUnary()
 ASTNode *FileParser::parsePrimary()
 {
 	auto cur = tokens[index];
+	auto module = parser->pathToModule[path];
 	index++;
 
 	switch (cur.type)
@@ -458,19 +492,30 @@ ASTNode *FileParser::parsePrimary()
 			}
 		case TOKEN_IDENTIFIER:
 			{
+				// Struct Literal with implicit module 
+				if (tokens[index].type == TOKEN_LEFT_BRACE)
+				{
+					index--;
+					return parseStructLiteral(module);	
+				}
+				else if (tokens[index].type == TOKEN_LEFT_PAREN) // Function call with implicit module
+				{
+					index--;
+					return parseFunctionCall(module);
+				}
 				if (tokens[index].type == TOKEN_COLON)
 				{
 					index++;
 					expectConsume(TOKEN_IDENTIFIER, "Expected struct or function name.");
 					if (tokens[index].type == TOKEN_LEFT_PAREN)
 					{
-						index -= 3;
-						return parseFunctionCall();
+						index--;
+						return parseFunctionCall(cur.value);
 					}
 					else if (tokens[index].type == TOKEN_LEFT_BRACE)
 					{
-						index -= 3;
-						return parseStructLiteral();
+						index--;
+						return parseStructLiteral(cur.value);
 
 					}
 				}
@@ -518,10 +563,9 @@ ASTNode *FileParser::parsePrimary()
 	return nullptr;
 }
 
-StructLiteral *FileParser::parseStructLiteral()
+StructLiteral *FileParser::parseStructLiteral(std::string &module)
 {
-	auto moduleName = expectConsume(TOKEN_IDENTIFIER, "Expected ident").value;
-	expectConsume(TOKEN_COLON, "");
+	auto moduleName = module;
 	auto name = expectConsume(TOKEN_IDENTIFIER, "Expected ident").value;
 
 	expectConsume(TOKEN_LEFT_BRACE, "Expected left square bracket");

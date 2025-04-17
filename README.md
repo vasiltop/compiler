@@ -1,12 +1,12 @@
-# Compiler 
+# jolt
 
-A statically typed, compiled programming language. 
+Jolt is a statically-typed, natively compiled language designed for performance-critical applications where precise memory control is essential. The language provides manual memory management without garbage collection, giving developers complete authority over their code.
 
 ## Installation
 
 ```bash
-git clone https://github.com/vasiltop/compiler
-cd compiler 
+git clone https://github.com/vasiltop/jolt
+cd jolt
 make build
 ```
 
@@ -24,7 +24,7 @@ Code examples can be found in the examples directory.
 ## Variables
 
 ```rust
-message: string = "Hello, world!";
+let message: string = "Hello, world!";
 ```
 
 ## Control Flow
@@ -68,23 +68,21 @@ main :: () i32 {
 ## Structs
 ```rust
 Other :: struct {
-	b: i32
+	b: [i32; 2]
 }
 
 Test :: struct {
-	b: entry:Other
-	other: entry:Other
+	b: Other
+	other: Other
 }
 
 main :: () i32 {
-	let a: entry:Test = entry:Test { 
-		b: entry:Other { b: 1 }
-		other: entry:Other { b: 3 }
+	let a: Test = Test { 
+		b: Other { b: [1, 2] }
+		other: Other { b: [3, 4] }
 	};
 
-	io:print("%d\n", a.b.b);
-	io:print("%d\n", a.other.b);
-
-	return 0;
+	io:print("%d\n", a.b.b[1]);
+	io:print("%d\n", a.other.b[1]);
 }
 ```

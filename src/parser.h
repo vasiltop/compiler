@@ -506,6 +506,7 @@ private:
 	void expect(TokenType type, std::string errorMessage);
 	Token expectConsume(TokenType type, std::string errorMessage);
 	std::filesystem::path resolveImportPath(std::filesystem::path p);
+	bool isBuiltInType(std::string &t);
 
 	size_t index;
 	std::vector<Token> tokens;
@@ -522,11 +523,11 @@ private:
 	FunctionDefinition *parseFunction();
 	StructDefinition *parseStruct();
 	Assign *parseAssign();
-	FunctionCall *parseFunctionCall();
 	Conditional *parseConditional();
 	Block *parseBlock();
 	While *parseWhile();
-	StructLiteral *parseStructLiteral();
+	FunctionCall *parseFunctionCall(std::string &moduleName);
+	StructLiteral *parseStructLiteral(std::string &moduleName);
 	VariableDecl *parseVariableDecl();
 	Type *parseType();
 };
