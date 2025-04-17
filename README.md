@@ -24,7 +24,7 @@ Code examples can be found in the examples directory.
 ## Variables
 
 ```rust
-message: string = "Hello, world!";
+let message: string = "Hello, world!";
 ```
 
 ## Control Flow
