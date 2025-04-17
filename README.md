@@ -5,8 +5,8 @@ Jolt is a statically-typed, natively compiled language designed for performance-
 ## Installation
 
 ```bash
-git clone https://github.com/vasiltop/compiler
-cd compiler 
+git clone https://github.com/vasiltop/jolt
+cd jolt
 make build
 ```
 
