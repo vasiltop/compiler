@@ -1,0 +1,30 @@
+name: std-release
+
+on:
+  push:
+    paths:
+      - 'std/**'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Zip std
+        run: |
+          zip -r std.zip std
+
+      - name: Release std
+        uses: softprops/action-gh-release@v1
+        with:
+          name: std Release
+          files: std.zip
+          prerelease: false
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

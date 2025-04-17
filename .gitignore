@@ -5,3 +5,4 @@ out.ll
 a.out
 todo
 /bazel-*
+.vs
