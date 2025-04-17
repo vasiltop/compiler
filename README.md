@@ -68,23 +68,21 @@ main :: () i32 {
 ## Structs
 ```rust
 Other :: struct {
-	b: i32
+	b: [i32; 2]
 }
 
 Test :: struct {
-	b: entry:Other
-	other: entry:Other
+	b: Other
+	other: Other
 }
 
 main :: () i32 {
-	let a: entry:Test = entry:Test { 
-		b: entry:Other { b: 1 }
-		other: entry:Other { b: 3 }
+	let a: Test = Test { 
+		b: Other { b: [1, 2] }
+		other: Other { b: [3, 4] }
 	};
 
-	io:print("%d\n", a.b.b);
-	io:print("%d\n", a.other.b);
-
-	return 0;
+	io:print("%d\n", a.b.b[1]);
+	io:print("%d\n", a.other.b[1]);
 }
 ```
