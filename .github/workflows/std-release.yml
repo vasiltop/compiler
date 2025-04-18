@@ -17,13 +17,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+        
+      - name: Prepare files
+        run: |
+          mkdir -p released
+          cp -r std/ released/std/
 
       - name: Release std
         uses: softprops/action-gh-release@v1
         with:
           tag_name: std-${{ github.run_number }}
           name: std library release
-          files: std/*
+          files: |
+            released/**/*
           prerelease: false
           draft: false
         env:
