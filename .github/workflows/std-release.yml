@@ -17,17 +17,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
-      - name: Zip std
-        run: |
-          zip -r std.zip std
 
       - name: Release std
         uses: softprops/action-gh-release@v1
         with:
           tag_name: std-${{ github.run_number }}
-          name: std Release
-          files: std.zip
+          name: std library release
+          files: std/*
           prerelease: false
           draft: false
         env:
