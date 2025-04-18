@@ -7,22 +7,23 @@ FileParser::FileParser(std::vector<Token> tokens, std::filesystem::path path, Pa
 	parser->parsedFiles.insert(path);
 }
 
-Parser::Parser(std::filesystem::path p, std::filesystem::path compilerPath): compilerPath(compilerPath)
+Parser::Parser(std::filesystem::path p, std::filesystem::path compilerPath) : compilerPath(compilerPath)
 {
 	if (!p.is_absolute())
 	{
 		p = std::filesystem::absolute(p);
 	}
-	
+
 	parse(p);
 }
 
 std::filesystem::path FileParser::resolveImportPath(std::filesystem::path p)
 {
-	std::string asString = p;
+	std::string asString = p.string();
 	asString += ".pl";
 
-	if (asString.find("std:") == 0) {
+	if (asString.find("std:") == 0)
+	{
 		std::filesystem::path compilerDir = "/opt/compiler/";
 
 		std::string relPath = asString.substr(4);
@@ -50,10 +51,10 @@ std::vector<ASTNode *> FileParser::parse()
 			std::filesystem::path path = expectConsume(TOKEN_STRING_LITERAL, "Expected file to import").value;
 			path = resolveImportPath(path);
 
-			if (!parser->parsedFiles.count(baseDir/path))
+			if (!parser->parsedFiles.count(baseDir / path))
 			{
-				parser->parsedFiles.insert(baseDir/path);
-				parser->parse(baseDir/path);
+				parser->parsedFiles.insert(baseDir / path);
+				parser->parse(baseDir / path);
 			}
 
 			continue;
@@ -69,15 +70,15 @@ std::vector<ASTNode *> FileParser::parse()
 
 ASTNode *FileParser::parseGlobal()
 {
-Token cur = tokens[index];
+	Token cur = tokens[index];
 
 	switch (cur.type)
 	{
-		case TOKEN_IDENTIFIER:
-			if (tokens[index + 3].type == TOKEN_LEFT_PAREN)
-				return parseFunction();
-			else if (tokens[index + 3].type == TOKEN_KEYWORD_STRUCT)
-				return parseStruct();
+	case TOKEN_IDENTIFIER:
+		if (tokens[index + 3].type == TOKEN_LEFT_PAREN)
+			return parseFunction();
+		else if (tokens[index + 3].type == TOKEN_KEYWORD_STRUCT)
+			return parseStruct();
 		break;
 	}
 
@@ -85,12 +86,11 @@ Token cur = tokens[index];
 	FilePosition pos = p.position;
 
 	std::cerr << path.string() << ":"
-			<< pos.row << ":" << pos.col
-			<< " > error: " << "Did not match any of the options when parsing global\n"
-			<< " Received: " << p.value
-			<< std::endl;
+			  << pos.row << ":" << pos.col
+			  << " > error: " << "Did not match any of the options when parsing global\n"
+			  << " Received: " << p.value
+			  << std::endl;
 	exit(1);
-
 }
 
 StructDefinition *FileParser::parseStruct()
@@ -105,7 +105,7 @@ StructDefinition *FileParser::parseStruct()
 
 	expectConsume(TOKEN_COLON, "Expected colon after name");
 	expectConsume(TOKEN_COLON, "Expected colon after name");
-	
+
 	expectConsume(TOKEN_KEYWORD_STRUCT, "");
 
 	expectConsume(TOKEN_LEFT_BRACE, "Expected colon after name");
@@ -119,7 +119,7 @@ StructDefinition *FileParser::parseStruct()
 		if (tokens[index].type == TOKEN_COMMA)
 			expectConsume(TOKEN_COMMA, "Expected comma after field");
 	}
-	
+
 	expectConsume(TOKEN_RIGHT_BRACE, "Expected colon after name");
 
 	return new StructDefinition(name, moduleName, fieldNames, fieldTypes);
@@ -127,7 +127,7 @@ StructDefinition *FileParser::parseStruct()
 
 FunctionDefinition *FileParser::parseFunction()
 {
-	
+
 	FunctionDefinition *def = new FunctionDefinition;
 	def->body = nullptr;
 	def->moduleName = parser->pathToModule[path];
@@ -148,13 +148,12 @@ FunctionDefinition *FileParser::parseFunction()
 			index++;
 			continue;
 		}
-		
+
 		std::string varName = expectConsume(TOKEN_IDENTIFIER, "Expected variable name").value;
 		def->paramNames.push_back(varName);
 		expectConsume(TOKEN_COLON, "Expected colon after type");
 		Type *type = parseType();
 		def->paramTypes.push_back(type);
-
 	}
 
 	expectConsume(TOKEN_RIGHT_PAREN, "Expected closing function paren");
@@ -174,7 +173,7 @@ Type *FileParser::parseType()
 {
 	Type *t = new Type(0, "");
 	t->pointerLevel = 0;
-	
+
 	while (tokens[index].type == TOKEN_POINTER)
 	{
 		t->pointerLevel++;
@@ -191,7 +190,7 @@ Type *FileParser::parseType()
 
 		return new ArrayType(arrayType, size, t->pointerLevel);
 	}
-	
+
 	auto name = expectConsume(TOKEN_IDENTIFIER, "Expected type identifier").value;
 
 	if (tokens[index].type == TOKEN_COLON)
@@ -227,8 +226,7 @@ bool FileParser::isBuiltInType(std::string &t)
 		"bool",
 		"void",
 		"string",
-		"char"
-	};
+		"char"};
 
 	return std::find(types.begin(), types.end(), t) != types.end();
 }
@@ -253,7 +251,7 @@ Block *FileParser::parseBlock()
 
 	while (tokens[index].type != TOKEN_RIGHT_BRACE)
 	{
-		body.push_back(parseLocal());	
+		body.push_back(parseLocal());
 	}
 
 	expectConsume(TOKEN_RIGHT_BRACE, "");
@@ -264,7 +262,7 @@ Block *FileParser::parseBlock()
 While *FileParser::parseWhile()
 {
 	expectConsume(TOKEN_KEYWORD_WHILE, "");
-	auto condition = parseExpression();	
+	auto condition = parseExpression();
 	auto body = parseBlock();
 
 	return new While(condition, body);
@@ -274,18 +272,18 @@ Conditional *FileParser::parseConditional()
 {
 	std::vector<std::pair<ASTNode *, Block *>> conditions;
 
-	do 
+	do
 	{
 		ASTNode *cond = nullptr;
 
 		if (tokens[index].type == TOKEN_KEYWORD_IF)
 		{
-			index++;	
+			index++;
 			cond = parseExpression();
-		} 
+		}
 
 		auto block = parseBlock();
-		conditions.push_back({ cond, block });
+		conditions.push_back({cond, block});
 
 	} while (tokens[index++].type == TOKEN_KEYWORD_ELSE);
 
@@ -298,61 +296,59 @@ ASTNode *FileParser::parseLocal()
 {
 	switch (tokens[index].type)
 	{
-		case TOKEN_POINTER:
-			{
-				return parseAssign();
-			}
-		case TOKEN_IDENTIFIER:
-			{
-				if (tokens[index + 1].type == TOKEN_LEFT_PAREN)
-				{
-					auto f = parseFunctionCall(parser->pathToModule[path]);
-					expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
-					return f;
-				}
-				if (tokens[index + 1].type == TOKEN_OPERATOR_ASSIGN
-						|| tokens[index + 1].type == TOKEN_LEFT_SQUARE_BRACKET
-						|| tokens[index + 1].type == TOKEN_DOT)
-				{
-					return parseAssign();
-				}
-				
-				if (tokens[index + 1].type == TOKEN_COLON)
-				{
-					auto module = tokens[index].value;
-					index += 2;
-					FunctionCall *f = parseFunctionCall(module);
-					expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
-					return f;
-				}
-			}
-		case TOKEN_KEYWORD_RETURN:
-			{
-				Return *ret = new Return;
-				expectConsume(TOKEN_KEYWORD_RETURN, "Expected the return keyword");
-				ret->expr = parseExpression();
-				expectConsume(TOKEN_SEMICOLON, "Expected semicolon after return");
+	case TOKEN_POINTER:
+	{
+		return parseAssign();
+	}
+	case TOKEN_IDENTIFIER:
+	{
+		if (tokens[index + 1].type == TOKEN_LEFT_PAREN)
+		{
+			auto f = parseFunctionCall(parser->pathToModule[path]);
+			expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
+			return f;
+		}
+		if (tokens[index + 1].type == TOKEN_OPERATOR_ASSIGN || tokens[index + 1].type == TOKEN_LEFT_SQUARE_BRACKET || tokens[index + 1].type == TOKEN_DOT)
+		{
+			return parseAssign();
+		}
 
-				return ret;
-			}
-		case TOKEN_KEYWORD_LET:
-			return parseVariableDecl();
-		case TOKEN_LEFT_BRACE:
-			return parseBlock();
-		case TOKEN_KEYWORD_IF:
-			return parseConditional();
-		case TOKEN_KEYWORD_WHILE:
-			return parseWhile();
+		if (tokens[index + 1].type == TOKEN_COLON)
+		{
+			auto module = tokens[index].value;
+			index += 2;
+			FunctionCall *f = parseFunctionCall(module);
+			expectConsume(TOKEN_SEMICOLON, "Expected semicolon");
+			return f;
+		}
+	}
+	case TOKEN_KEYWORD_RETURN:
+	{
+		Return *ret = new Return;
+		expectConsume(TOKEN_KEYWORD_RETURN, "Expected the return keyword");
+		ret->expr = parseExpression();
+		expectConsume(TOKEN_SEMICOLON, "Expected semicolon after return");
+
+		return ret;
+	}
+	case TOKEN_KEYWORD_LET:
+		return parseVariableDecl();
+	case TOKEN_LEFT_BRACE:
+		return parseBlock();
+	case TOKEN_KEYWORD_IF:
+		return parseConditional();
+	case TOKEN_KEYWORD_WHILE:
+		return parseWhile();
 	}
 
 	Token p = tokens[index];
 	FilePosition pos = p.position;
 
 	std::cerr << path.string() << ":"
-			<< pos.row << ":" << pos.col
-			<< " > error: " << "Did not match any of the options when parsing local\n"
-			<< " Received: " << p.value
-			<< std::endl;
+			  << pos.row << ":" << pos.col
+			  << " > error: " << "Did not match any of the options when parsing local\n"
+			  << " Received: " << p.value
+			  << std::endl;
 	exit(1);
 }
 
@@ -402,30 +398,30 @@ VariableDecl *FileParser::parseVariableDecl()
 
 int getPrecedence(TokenType type)
 {
-    switch (type)
-    {
-    case TOKEN_OPERATOR_MUL:
-    case TOKEN_OPERATOR_DIV:
-    case TOKEN_OPERATOR_MOD:
-        return 5;
-    case TOKEN_OPERATOR_PLUS:
-    case TOKEN_OPERATOR_MINUS:
-        return 4;
-    case TOKEN_OPERATOR_LESS:
-    case TOKEN_OPERATOR_GREATER:
-    case TOKEN_OPERATOR_LESS_EQUAL:
-    case TOKEN_OPERATOR_GREATER_EQUAL:
-        return 3;
-    case TOKEN_OPERATOR_NOT_EQUAL:
-    case TOKEN_OPERATOR_EQUAL:
-        return 2;
-    case TOKEN_OPERATOR_AND:
-        return 1;
-    case TOKEN_OPERATOR_OR:
-        return 0;
-    default:
-        return -1;
-    }
+	switch (type)
+	{
+	case TOKEN_OPERATOR_MUL:
+	case TOKEN_OPERATOR_DIV:
+	case TOKEN_OPERATOR_MOD:
+		return 5;
+	case TOKEN_OPERATOR_PLUS:
+	case TOKEN_OPERATOR_MINUS:
+		return 4;
+	case TOKEN_OPERATOR_LESS:
+	case TOKEN_OPERATOR_GREATER:
+	case TOKEN_OPERATOR_LESS_EQUAL:
+	case TOKEN_OPERATOR_GREATER_EQUAL:
+		return 3;
+	case TOKEN_OPERATOR_NOT_EQUAL:
+	case TOKEN_OPERATOR_EQUAL:
+		return 2;
+	case TOKEN_OPERATOR_AND:
+		return 1;
+	case TOKEN_OPERATOR_OR:
+		return 0;
+	default:
+		return -1;
+	}
 }
 
 ASTNode *FileParser::parseExpression(int precedence)
@@ -443,7 +439,7 @@ ASTNode *FileParser::parseExpression(int precedence)
 		}
 
 		index++;
-		
+
 		auto right = parseExpression(currentPrecedence + 1);
 
 		left = new BinaryExpr(tok, left, right);
@@ -474,90 +470,90 @@ ASTNode *FileParser::parsePrimary()
 
 	switch (cur.type)
 	{
-		case TOKEN_INT_LITERAL:
-			return new IntLiteral(std::stoi(cur.value));
-		case TOKEN_STRING_LITERAL:
-			return new StringLiteral(cur.value);
-		case TOKEN_BOOL_LITERAL:
-			return new BoolLiteral(cur.value == "true");
-		case TOKEN_CHAR_LITERAL:
-			return new CharLiteral(cur.value[0]);
-		case TOKEN_AT:
-			return parseSpecial();
-		case TOKEN_LEFT_PAREN:
+	case TOKEN_INT_LITERAL:
+		return new IntLiteral(std::stoi(cur.value));
+	case TOKEN_STRING_LITERAL:
+		return new StringLiteral(cur.value);
+	case TOKEN_BOOL_LITERAL:
+		return new BoolLiteral(cur.value == "true");
+	case TOKEN_CHAR_LITERAL:
+		return new CharLiteral(cur.value[0]);
+	case TOKEN_AT:
+		return parseSpecial();
+	case TOKEN_LEFT_PAREN:
+	{
+		auto expr = parseExpression();
+		expectConsume(TOKEN_RIGHT_PAREN, "Expected ) after parsing expression");
+		return expr;
+	}
+	case TOKEN_IDENTIFIER:
+	{
+		// Struct Literal with implicit module
+		if (tokens[index].type == TOKEN_LEFT_BRACE)
+		{
+			index--;
+			return parseStructLiteral(module);
+		}
+		else if (tokens[index].type == TOKEN_LEFT_PAREN) // Function call with implicit module
+		{
+			index--;
+			return parseFunctionCall(module);
+		}
+		if (tokens[index].type == TOKEN_COLON)
+		{
+			index++;
+			expectConsume(TOKEN_IDENTIFIER, "Expected struct or function name.");
+			if (tokens[index].type == TOKEN_LEFT_PAREN)
 			{
-				auto expr = parseExpression();
-				expectConsume(TOKEN_RIGHT_PAREN, "Expected ) after parsing expression");
-				return expr;
+				index--;
+				return parseFunctionCall(cur.value);
 			}
-		case TOKEN_IDENTIFIER:
+			else if (tokens[index].type == TOKEN_LEFT_BRACE)
 			{
-				// Struct Literal with implicit module 
-				if (tokens[index].type == TOKEN_LEFT_BRACE)
-				{
-					index--;
-					return parseStructLiteral(module);	
-				}
-				else if (tokens[index].type == TOKEN_LEFT_PAREN) // Function call with implicit module
-				{
-					index--;
-					return parseFunctionCall(module);
-				}
-				if (tokens[index].type == TOKEN_COLON)
-				{
-					index++;
-					expectConsume(TOKEN_IDENTIFIER, "Expected struct or function name.");
-					if (tokens[index].type == TOKEN_LEFT_PAREN)
-					{
-						index--;
-						return parseFunctionCall(cur.value);
-					}
-					else if (tokens[index].type == TOKEN_LEFT_BRACE)
-					{
-						index--;
-						return parseStructLiteral(cur.value);
-
-					}
-				}
-
-				std::vector<ASTNode *> indexes;
-
-				while(tokens[index].type == TOKEN_LEFT_SQUARE_BRACKET
-						|| tokens[index].type == TOKEN_DOT)
-				{
-					switch (tokens[index].type) {
-						case TOKEN_LEFT_SQUARE_BRACKET:
-							expectConsume(TOKEN_LEFT_SQUARE_BRACKET, "Expected left square bracket");
-							indexes.push_back(new ArrayIndex(parseExpression()));
-							expectConsume(TOKEN_RIGHT_SQUARE_BRACKET, "Expected right square bracket");
-							break;
-						case TOKEN_DOT:
-							expectConsume(TOKEN_DOT, "");
-							indexes.push_back(new StructField(expectConsume(TOKEN_IDENTIFIER, "Expected Identifier").value));
-							break;
-					}
-									}
-
-				if (indexes.size())
-					return new VariableAccess(cur.value, indexes);
-
-				return new Variable(cur.value);
+				index--;
+				return parseStructLiteral(cur.value);
 			}
-		case TOKEN_LEFT_SQUARE_BRACKET:
-			{
-				std::vector<ASTNode *> values;
-				do {
-					values.push_back(parseExpression());
-					
-					if (tokens[index].type == TOKEN_COMMA)
-						index++;
-					
-				} while (tokens[index].type != TOKEN_RIGHT_SQUARE_BRACKET);
+		}
 
+		std::vector<ASTNode *> indexes;
+
+		while (tokens[index].type == TOKEN_LEFT_SQUARE_BRACKET || tokens[index].type == TOKEN_DOT)
+		{
+			switch (tokens[index].type)
+			{
+			case TOKEN_LEFT_SQUARE_BRACKET:
+				expectConsume(TOKEN_LEFT_SQUARE_BRACKET, "Expected left square bracket");
+				indexes.push_back(new ArrayIndex(parseExpression()));
+				expectConsume(TOKEN_RIGHT_SQUARE_BRACKET, "Expected right square bracket");
+				break;
+			case TOKEN_DOT:
+				expectConsume(TOKEN_DOT, "");
+				indexes.push_back(new StructField(expectConsume(TOKEN_IDENTIFIER, "Expected Identifier").value));
+				break;
+			}
+		}
+
+		if (indexes.size())
+			return new VariableAccess(cur.value, indexes);
+
+		return new Variable(cur.value);
+	}
+	case TOKEN_LEFT_SQUARE_BRACKET:
+	{
+		std::vector<ASTNode *> values;
+		do
+		{
+			values.push_back(parseExpression());
+
+			if (tokens[index].type == TOKEN_COMMA)
 				index++;
 
-				return new ArrayLiteral(values);
-			}
+		} while (tokens[index].type != TOKEN_RIGHT_SQUARE_BRACKET);
+
+		index++;
+
+		return new ArrayLiteral(values);
+	}
 	}
 
 	return nullptr;
@@ -586,7 +582,6 @@ StructLiteral *FileParser::parseStructLiteral(std::string &module)
 	expectConsume(TOKEN_RIGHT_BRACE, "Expected left square bracket");
 
 	return new StructLiteral(moduleName, name, fieldNames, fieldExprs);
-
 }
 
 ASTNode *FileParser::parseSpecial()
@@ -619,18 +614,18 @@ Token FileParser::expectConsume(TokenType type, std::string errorMessage)
 
 void FileParser::expect(TokenType type, std::string errorMessage)
 {
-	if (eof() || tokens[index].type != type) 
+	if (eof() || tokens[index].type != type)
 	{
 		Token p = tokens[index];
 		FilePosition pos = p.position;
-		//std::string tokString = Lexer::tokenEnumToString[p.type];
+		// std::string tokString = Lexer::tokenEnumToString[p.type];
 		std::string tokString = p.value;
 
 		std::cerr << path.string() << ":"
-			<< pos.row << ":" << pos.col
-			<< " > error: " << errorMessage
-			<< " Received: " << tokString
-			<< std::endl;
+				  << pos.row << ":" << pos.col
+				  << " > error: " << errorMessage
+				  << " Received: " << tokString
+				  << std::endl;
 
 		exit(1);
 	}
@@ -643,8 +638,8 @@ bool FileParser::eof()
 
 bool Parser::isParsed(std::filesystem::path path)
 {
-	for (auto file: files)
-	{	
+	for (auto file : files)
+	{
 		std::cout << "Comparing" << std::endl;
 		std::cout << file.path << std::endl;
 		std::cout << path << std::endl;
@@ -654,7 +649,6 @@ bool Parser::isParsed(std::filesystem::path path)
 		{
 			return true;
 		}
-		
 	}
 
 	return false;
@@ -662,19 +656,19 @@ bool Parser::isParsed(std::filesystem::path path)
 
 void Parser::parse(std::filesystem::path p)
 {
-	//std::cout << "Beginning to parse: " << p << "\n";
+	// std::cout << "Beginning to parse: " << p << "\n";
 	Lexer lex(p);
 	lex.display(lex.tokens());
 
 	FileParser fileParser(lex.tokens(), p, this);
 	auto ast = fileParser.parse();
 
-	//std::cout << "AST for file: " << p << "\n";
-//	for (ASTNode *node: ast) {
-//		node->print(0);
-//	}
-//	std::cout << std::endl;
+	// std::cout << "AST for file: " << p << "\n";
+	//	for (ASTNode *node: ast) {
+	//		node->print(0);
+	//	}
+	//	std::cout << std::endl;
 
-	FileInfo file = { p, ast, fileParser.functionSymbols, fileParser.structSymbols };
+	FileInfo file = {p, ast, fileParser.functionSymbols, fileParser.structSymbols};
 	files.push_back(file);
 }

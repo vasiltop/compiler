@@ -1,5 +1,5 @@
 module "entry"
-import "std:io"
+import "../std/io.jl"
 
 Other :: struct {
 	b: [i32; 2]

@@ -30,25 +30,24 @@ struct ASTNode
 		std::cout << "Unimplemented\n";
 	}
 
-	virtual llvm::Value* codegen(GScope *scope, Generator *gen)
+	virtual llvm::Value *codegen(GScope *scope, Generator *gen)
 	{
 		return nullptr;
 	}
-
 };
 
-struct Block: public ASTNode
+struct Block : public ASTNode
 {
 	std::vector<ASTNode *> body;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	Block(std::vector<ASTNode *> body)
-    : body(body) {}
+		: body(body) {}
 
 	void print(int level) override
 	{
 		indentPrint(level, "Block: ");
-		for (auto &l: body)
+		for (auto &l : body)
 		{
 			l->print(level + 2);
 		}
@@ -72,11 +71,10 @@ struct Type : public ASTNode
 	bool isSigned()
 	{
 		if (
-				name == "u8" || 
-				name == "u16" || 
-				name == "u32" || 
-				name == "u64"
-				)
+			name == "u8" ||
+			name == "u16" ||
+			name == "u32" ||
+			name == "u64")
 		{
 			return false;
 		}
@@ -87,16 +85,16 @@ struct Type : public ASTNode
 
 struct ArrayType : public Type
 {
-	Type* type;
+	Type *type;
 	int size;
 
-	ArrayType(Type *type, int size, size_t pointerLevel): Type(pointerLevel, ""), type(type), size(size) {}
+	ArrayType(Type *type, int size, size_t pointerLevel) : Type(pointerLevel, ""), type(type), size(size) {}
 
 	void print(int level) override
 	{
 		indentPrint(level, "Array Type:");
 		indentPrint(level + 2, "Level: " + std::to_string(pointerLevel));
-		type->print(level+2);
+		type->print(level + 2);
 	}
 };
 
@@ -122,10 +120,10 @@ struct FunctionDefinition : public ASTNode
 	std::vector<std::string> paramNames;
 	std::vector<Type *> paramTypes;
 	Type *returnType;
-	
+
 	Block *body; // could be nullptr if no body
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Function: " + name);
@@ -152,7 +150,7 @@ struct FunctionCall : public ASTNode
 	std::string name;
 	std::vector<ASTNode *> params;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Function Call: " + name);
@@ -170,11 +168,10 @@ struct StructDefinition : public ASTNode
 	std::string moduleName;
 	std::vector<std::string> fieldNames;
 	std::vector<Type *> fieldTypes;
-	
 
 	// llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	StructDefinition(std::string name, std::string moduleName, std::vector<std::string> fieldNames, std::vector<Type *> fieldTypes) : name(name), moduleName(moduleName), fieldNames(fieldNames), fieldTypes(fieldTypes) {}
-		
+
 	void print(int level) override
 	{
 		indentPrint(level, "Struct Decl: " + name);
@@ -191,7 +188,7 @@ struct Return : public ASTNode
 {
 	ASTNode *expr;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Return: ");
@@ -199,13 +196,13 @@ struct Return : public ASTNode
 	}
 };
 
-struct Assign: public ASTNode
+struct Assign : public ASTNode
 {
 	ASTNode *lhs;
 	ASTNode *rhs;
 
-	Assign(ASTNode *lhs, ASTNode *rhs): lhs(lhs), rhs(rhs) {}
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	Assign(ASTNode *lhs, ASTNode *rhs) : lhs(lhs), rhs(rhs) {}
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	void print(int level) override
 	{
 		indentPrint(level, "Assign: ");
@@ -214,41 +211,40 @@ struct Assign: public ASTNode
 	}
 };
 
-struct ArrayLiteral: public ASTNode
+struct ArrayLiteral : public ASTNode
 {
 	std::vector<ASTNode *> values;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	ArrayLiteral(std::vector<ASTNode *> values) : values(values) {}
 	void print(int level) override
 	{
 		indentPrint(level, "ArrayLiteral: ");
 
-		for (auto &v: values)
+		for (auto &v : values)
 		{
 			v->print(level + 2);
 		}
 	}
 };
 
-
-struct StringLiteral: public ASTNode
+struct StringLiteral : public ASTNode
 {
 	std::string value;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	StringLiteral(const std::string& val) : value(val) {}
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
+	StringLiteral(const std::string &val) : value(val) {}
 	void print(int level) override
 	{
 		indentPrint(level, "StringLiteral: " + value);
 	}
 };
 
-struct CharLiteral: public ASTNode
+struct CharLiteral : public ASTNode
 {
 	char value;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	CharLiteral(char value) : value(value) {}
 	void print(int level) override
 	{
@@ -256,31 +252,31 @@ struct CharLiteral: public ASTNode
 	}
 };
 
-struct Variable: public ASTNode
+struct Variable : public ASTNode
 {
 	std::string name;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	Variable(const std::string& name) : name(name) {}
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
+	Variable(const std::string &name) : name(name) {}
 	void print(int level) override
 	{
 		indentPrint(level, "Variable: " + name);
 	}
 };
 
-struct VariableAccess: public ASTNode
+struct VariableAccess : public ASTNode
 {
 	std::string varName;
 	std::vector<ASTNode *> indexes;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	VariableAccess(std::string varName, std::vector<ASTNode *> indexes) : varName(varName), indexes(indexes) {}
 
 	void print(int level) override
 	{
 		indentPrint(level, "Variable Access: " + varName);
 
-		for (auto &index: indexes)
+		for (auto &index : indexes)
 		{
 			index->print(level + 2);
 		}
@@ -294,7 +290,7 @@ struct StructLiteral : public ASTNode
 	std::vector<std::string> fieldNames;
 	std::vector<ASTNode *> fieldExprs;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	StructLiteral(std::string moduleName, std::string name, std::vector<std::string> fieldNames, std::vector<ASTNode *> fieldExprs) : moduleName(moduleName), name(name), fieldNames(fieldNames), fieldExprs(fieldExprs) {}
 
 	void print(int level) override
@@ -314,7 +310,7 @@ struct StructField : public ASTNode
 {
 	std::string fieldName;
 
-	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	// llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	StructField(std::string fieldName) : fieldName(fieldName) {}
 	void print(int level) override
 	{
@@ -322,11 +318,11 @@ struct StructField : public ASTNode
 	}
 };
 
-struct ArrayIndex: public ASTNode
+struct ArrayIndex : public ASTNode
 {
 	ASTNode *expr;
 
-	//llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	// llvm::Value* codegen(GScope *scope, Generator *gen) override;
 	ArrayIndex(ASTNode *expr) : expr(expr) {}
 	void print(int level) override
 	{
@@ -335,14 +331,14 @@ struct ArrayIndex: public ASTNode
 	}
 };
 
-struct VariableDecl: public ASTNode
+struct VariableDecl : public ASTNode
 {
 	std::string varName;
 	Type *type;
 	ASTNode *expr;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	VariableDecl(const std::string& varName, Type *type, ASTNode *expr) : varName(varName), type(type), expr(expr) {}
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
+	VariableDecl(const std::string &varName, Type *type, ASTNode *expr) : varName(varName), type(type), expr(expr) {}
 
 	void print(int level) override
 	{
@@ -352,23 +348,23 @@ struct VariableDecl: public ASTNode
 	}
 };
 
-struct IntLiteral: public ASTNode
+struct IntLiteral : public ASTNode
 {
 	int value;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
-  IntLiteral(int val) : value(val) {}
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
+	IntLiteral(int val) : value(val) {}
 	void print(int level) override
 	{
 		indentPrint(level, "IntLiteral: " + std::to_string(value));
 	}
 };
 
-struct BoolLiteral: public ASTNode
+struct BoolLiteral : public ASTNode
 {
 	bool value;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	BoolLiteral(bool val) : value(val) {}
 	void print(int level) override
 	{
@@ -382,8 +378,8 @@ struct BinaryExpr : public ASTNode
 	ASTNode *lhs;
 	ASTNode *rhs;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	BinaryExpr(Token op, ASTNode* left, ASTNode* right)
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
+	BinaryExpr(Token op, ASTNode *left, ASTNode *right)
 		: op(op), lhs(left), rhs(right) {}
 	void print(int level) override
 	{
@@ -393,14 +389,14 @@ struct BinaryExpr : public ASTNode
 	}
 };
 
-struct UnaryExpr: public ASTNode
+struct UnaryExpr : public ASTNode
 {
 	Token op;
 	ASTNode *expr;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	UnaryExpr(Token op, ASTNode* expr)
-    : op(op), expr(expr) {}
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
+	UnaryExpr(Token op, ASTNode *expr)
+		: op(op), expr(expr) {}
 	void print(int level) override
 	{
 		indentPrint(level, "UnaryExpr: " + op.value);
@@ -408,14 +404,14 @@ struct UnaryExpr: public ASTNode
 	}
 };
 
-struct Cast: public ASTNode
+struct Cast : public ASTNode
 {
 	Type *type;
 	ASTNode *expr;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
 	Cast(Type *type, ASTNode *expr)
-    : type(type), expr(expr) {}
+		: type(type), expr(expr) {}
 	void print(int level) override
 	{
 		indentPrint(level, "Cast: ");
@@ -424,13 +420,13 @@ struct Cast: public ASTNode
 	}
 };
 
-struct While: public ASTNode
+struct While : public ASTNode
 {
-	ASTNode* condition;
-	Block* body;
+	ASTNode *condition;
+	Block *body;
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	While(ASTNode *condition, Block *body): condition(condition), body(body) {}
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
+	While(ASTNode *condition, Block *body) : condition(condition), body(body) {}
 
 	void print(int level) override
 	{
@@ -440,25 +436,27 @@ struct While: public ASTNode
 	}
 };
 
-struct Conditional: public ASTNode
+struct Conditional : public ASTNode
 {
 	std::vector<std::pair<ASTNode *, Block *>> conditions; // condition and block
 
-	llvm::Value* codegen(GScope *scope, Generator *gen) override;
-	Conditional(std::vector<std::pair<ASTNode *, Block *>> conditions) 
-    : conditions(conditions) {}
+	llvm::Value *codegen(GScope *scope, Generator *gen) override;
+	Conditional(std::vector<std::pair<ASTNode *, Block *>> conditions)
+		: conditions(conditions) {}
 
 	void print(int level) override
 	{
 		indentPrint(level, "Conditional: ");
 
-		for (auto &condition: conditions)
+		for (auto &condition : conditions)
 		{
 			if (condition.first)
 			{
 				indentPrint(level, "Condition: ");
 				condition.first->print(level + 2);
-			} else {
+			}
+			else
+			{
 
 				indentPrint(level, "Else: ");
 			}
@@ -466,7 +464,6 @@ struct Conditional: public ASTNode
 			indentPrint(level, "Block: ");
 			condition.second->print(level + 2);
 		}
-
 	}
 };
 
@@ -487,7 +484,7 @@ public:
 	bool isParsed(std::filesystem::path path);
 
 	std::vector<FileInfo> files;
-	std::set<std::string> parsedFiles;
+	std::set<std::filesystem::path> parsedFiles;
 	std::map<std::filesystem::path, std::string> pathToModule;
 	std::filesystem::path compilerPath;
 };

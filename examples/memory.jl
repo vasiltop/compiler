@@ -10,6 +10,6 @@ main :: () i32 {
 	let other: ^Test = &test;
 
 	let new: Test = ^other;
-	io:print("%d\n", new.a);
+	io:print("%d\n", (^other).a);
 	return 0;
 }
