@@ -29,8 +29,9 @@ jobs:
           tag_name: std-${{ github.run_number }}
           name: std library release
           files: |
-            released/*
+            released/**/*
           prerelease: false
           draft: false
+          working_directory: ./
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
