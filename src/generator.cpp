@@ -223,7 +223,20 @@ void Generator::generate()
 	}
 	else if (llvm::Triple(llvm::sys::getProcessTriple()).isOSLinux())
 	{
-		linker = "ld";
+		linker = "/usr/bin/ld";
+
+		args = {linker,
+							"-o",
+							"out",
+							"out.o",
+							"-L/lib",
+							"-L/usr/lib",
+							"-lc",
+							"/usr/lib/x86_64-linux-gnu/crt1.o",
+							"/usr/lib/x86_64-linux-gnu/crti.o",
+							"-dynamic-linker",
+							"/lib64/ld-linux-x86-64.so.2",
+							"/usr/lib/x86_64-linux-gnu/crtn.o"};
 	}
 	else
 	{
@@ -238,8 +251,7 @@ void Generator::generate()
 	}
 
 	std::string errMsg;
-	int result = llvm::sys::ExecuteAndWait(linker, execArgs, std::nullopt, {},
-										   0, 0, &errMsg);
+	int result = llvm::sys::ExecuteAndWait(linker, execArgs, std::nullopt, {}, 0, 0, &errMsg);
 
 	if (result != 0)
 	{
