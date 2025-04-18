@@ -7,3 +7,4 @@ todo
 /bazel-*
 .vs
 out.o
+out
