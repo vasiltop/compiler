@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'std/**'
+  workflow_dispatch:
 
 jobs:
   release:
@@ -22,6 +23,7 @@ jobs:
       - name: Release std
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: std-${{ github.run_number }}
           name: std Release
           files: std.zip
           prerelease: false
