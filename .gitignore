@@ -6,3 +6,4 @@ a.out
 todo
 /bazel-*
 .vs
+out.o

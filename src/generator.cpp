@@ -1,9 +1,15 @@
 #include "generator.h"
 #include "parser.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/TargetParser/Host.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include <llvm/Support/Process.h>
 
-Generator::Generator(Parser *parser): parser(parser), builder(ctx), module("main", ctx) {}
+Generator::Generator(Parser *parser) : parser(parser), builder(ctx), module("main", ctx) {}
 
-GScope::GScope(GScope *parent): parent(parent) {}
+GScope::GScope(GScope *parent) : parent(parent) {}
 
 std::pair<llvm::Value *, GType> GScope::getVar(std::string name)
 {
@@ -14,7 +20,7 @@ std::pair<llvm::Value *, GType> GScope::getVar(std::string name)
 	{
 		if (cur->variables.find(name) != cur->variables.end())
 		{
-			return cur->variables[name];	
+			return cur->variables[name];
 		}
 		else
 		{
@@ -74,10 +80,12 @@ GType Generator::typeInfo(Type *type)
 	{
 		ty = llvm::Type::getInt8Ty(ctx);
 	}
-	else if (type->name == "f64") {
+	else if (type->name == "f64")
+	{
 		ty = llvm::Type::getDoubleTy(ctx);
 	}
-	else if (type->name == "f32") {
+	else if (type->name == "f32")
+	{
 		ty = llvm::Type::getFloatTy(ctx);
 	}
 	else if (type->name == "bool")
@@ -93,10 +101,11 @@ GType Generator::typeInfo(Type *type)
 		ty = llvm::Type::getInt8Ty(ctx);
 		gType.depth = 1;
 	}
-	else if (type->name == "char") {
-    ty = llvm::Type::getInt8Ty(ctx);
+	else if (type->name == "char")
+	{
+		ty = llvm::Type::getInt8Ty(ctx);
 	}
-	
+
 	gType.elementType = ty;
 
 	return gType;
@@ -104,17 +113,17 @@ GType Generator::typeInfo(Type *type)
 
 void Generator::generateDefinitions()
 {
-	for (auto fileInfo: parser->files)
+	for (auto fileInfo : parser->files)
 	{
 		std::string moduleName = parser->pathToModule[fileInfo.path];
 
-		for (auto node: fileInfo.nodes)
+		for (auto node : fileInfo.nodes)
 		{
-			if (auto func = dynamic_cast<FunctionDefinition*>(node))
+			if (auto func = dynamic_cast<FunctionDefinition *>(node))
 			{
 				std::vector<llvm::Type *> paramTypes;
 
-				for (auto type: func->paramTypes)
+				for (auto type : func->paramTypes)
 				{
 					paramTypes.push_back(typeInfo(type).type(ctx));
 				}
@@ -128,7 +137,7 @@ void Generator::generateDefinitions()
 			{
 				std::vector<llvm::Type *> memberTypes;
 
-				for (auto &type: structDef->fieldTypes)
+				for (auto &type : structDef->fieldTypes)
 				{
 					auto ty = typeInfo(type);
 					memberTypes.push_back(ty.type(ctx));
@@ -145,47 +154,127 @@ void Generator::generate()
 {
 	generateDefinitions();
 
-
-	for (auto fileInfo: parser->files)
+	for (auto fileInfo : parser->files)
 	{
 		GScope *scope = new GScope(nullptr);
 		currentFile = &fileInfo;
-		for (auto node: fileInfo.nodes)
+		for (auto node : fileInfo.nodes)
 		{
 			node->codegen(scope, this);
 		}
 	}
 
-	std::string filename = "out.ll";
+	llvm::InitializeNativeTarget();
+	llvm::InitializeNativeTargetAsmPrinter();
+
+	auto targetTriple = llvm::sys::getDefaultTargetTriple();
+
+	std::string error;
+	auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+
+	if (!target)
+	{
+		llvm::errs() << "Error: " << error << "\n";
+		return;
+	}
+
+	auto cpu = "generic";
+	auto features = "";
+
+	llvm::TargetOptions options;
+	auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, options, llvm::Reloc::PIC_);
+
+	module.setTargetTriple(targetTriple);
+	module.setDataLayout(targetMachine->createDataLayout());
+
+	auto filename = "out.o";
+	std::error_code ec;
+	llvm::raw_fd_ostream dest(filename, ec);
+
+	if (ec)
+	{
+		llvm::errs() << "Error opening file: " << ec.message() << "\n";
+		return;
+	}
+
+	auto fileType = llvm::CGFT_ObjectFile;
+	llvm::legacy::PassManager pass;
+	if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType))
+	{
+		llvm::errs() << "TargetMachine can't emit a file of this type\n";
+		return;
+	}
+
+	pass.run(module);
+	dest.flush();
+
+	std::string linker;
+	std::vector<std::string> args;
+
+	if (llvm::Triple(llvm::sys::getProcessTriple()).isOSWindows())
+	{
+		linker = "link.exe";
+		args = {linker,
+				"/entry:_start",
+				"/subsystem:console",
+				"msvcrt.lib",
+				"/out:out.exe",
+				"out.o"};
+	}
+	else if (llvm::Triple(llvm::sys::getProcessTriple()).isOSLinux())
+	{
+		linker = "ld";
+	}
+	else
+	{
+		std::cerr << "Unsupported OS\n";
+		return;
+	}
+
+	std::vector<llvm::StringRef> execArgs;
+	for (const auto &arg : args)
+	{
+		execArgs.push_back(arg);
+	}
+
+	std::string errMsg;
+	int result = llvm::sys::ExecuteAndWait(linker, execArgs, std::nullopt, {},
+										   0, 0, &errMsg);
+
+	if (result != 0)
+	{
+		llvm::errs() << "Linking failed: " << errMsg << "\n";
+	}
+
+	std::string llvmOutFile = "out.ll";
 
 	std::error_code errorCode;
-	llvm::raw_fd_ostream outFile(filename, errorCode);
+	llvm::raw_fd_ostream outFile(llvmOutFile, errorCode);
 
 	if (errorCode)
 	{
-		llvm::errs() << "Error opening file '" << filename << "': " << errorCode.message() << "\n";
+		llvm::errs() << "Error opening file '" << llvmOutFile << "': " << errorCode.message() << "\n";
 		return;
 	}
 
 	module.print(outFile, nullptr);
 	outFile.close();
-
-	system("clang out.ll");
 }
 
-llvm::Value* FunctionDefinition::codegen(GScope *scope, Generator *gen)
+llvm::Value *FunctionDefinition::codegen(GScope *scope, Generator *gen)
 {
-	if (!body) return nullptr;
+	if (!body)
+		return nullptr;
 
 	GScope *funcScope = new GScope(scope);
 
 	llvm::Function *func = gen->functionSymbols[moduleName][name];
-	llvm::BasicBlock *entry = llvm::BasicBlock::Create(gen->module.getContext(), "entry", func);	
+	llvm::BasicBlock *entry = llvm::BasicBlock::Create(gen->module.getContext(), "entry", func);
 	gen->builder.SetInsertPoint(entry);
 
 	unsigned i = 0;
 
-	for (auto &arg: func->args())
+	for (auto &arg : func->args())
 	{
 		llvm::AllocaInst *alloc = gen->builder.CreateAlloca(arg.getType(), nullptr, arg.getName());
 		gen->builder.CreateStore(&arg, alloc);
@@ -203,44 +292,43 @@ llvm::Value* FunctionDefinition::codegen(GScope *scope, Generator *gen)
 	return func;
 }
 
-
-llvm::Value* Block::codegen(GScope *scope, Generator *gen)
+llvm::Value *Block::codegen(GScope *scope, Generator *gen)
 {
 	GScope *blockScope = new GScope(scope);
 
-	for (auto &node: body)
+	for (auto &node : body)
 	{
 		node->codegen(blockScope, gen);
 	}
-	
+
 	return nullptr;
 }
 
-llvm::Value* StringLiteral::codegen(GScope *scope, Generator *gen)
+llvm::Value *StringLiteral::codegen(GScope *scope, Generator *gen)
 {
-	return gen->builder.CreateGlobalStringPtr(value);	
+	return gen->builder.CreateGlobalStringPtr(value);
 }
 
-llvm::Value* CharLiteral::codegen(GScope *scope, Generator *gen)
+llvm::Value *CharLiteral::codegen(GScope *scope, Generator *gen)
 {
 	return gen->builder.getInt8(value);
 }
 
-llvm::Value* IntLiteral::codegen(GScope *scope, Generator *gen)
+llvm::Value *IntLiteral::codegen(GScope *scope, Generator *gen)
 {
 	return gen->builder.getInt32(value);
 }
 
-llvm::Value* BoolLiteral::codegen(GScope *scope, Generator *gen)
+llvm::Value *BoolLiteral::codegen(GScope *scope, Generator *gen)
 {
 	return gen->builder.getInt1(value);
 }
 
-llvm::Value* Variable::codegen(GScope *scope, Generator *gen)
+llvm::Value *Variable::codegen(GScope *scope, Generator *gen)
 {
 	auto var = scope->getVar(name);
 
-	if (!var.first) 
+	if (!var.first)
 	{
 		std::cout << "Could not find variable with name: " << name << "\n";
 		return nullptr;
@@ -257,84 +345,94 @@ llvm::Value *BinaryExpr::codegen(GScope *scope, Generator *gen)
 	llvm::Value *lhsValue = lhs->codegen(scope, gen);
 	llvm::Value *rhsValue = rhs->codegen(scope, gen);
 
-	if (!lhsValue || !rhsValue) return nullptr;
+	if (!lhsValue || !rhsValue)
+		return nullptr;
 
 	auto lhsType = gen->expressionType(lhs, scope);
 	auto rhsType = gen->expressionType(rhs, scope);
 
 	switch (op.type)
 	{
-		case TOKEN_OPERATOR_PLUS:
-			{
-				if (lhsType.isPointer() && rhsType.type(gen->ctx)->isIntegerTy()) {
-					return gen->builder.CreateGEP(
-							lhsType.elementType,
-							lhsValue, 
-							rhsValue, 
-							"ptr_add");
-				}
-				if (rhsType.isPointer() && lhsType.type(gen->ctx)->isIntegerTy()) {
-					return gen->builder.CreateGEP(
-							rhsType.elementType,
-							rhsValue, 
-							lhsValue, 
-							"ptr_add");
-				}
-				return gen->builder.CreateAdd(lhsValue, rhsValue);
-			}
-    case TOKEN_OPERATOR_MINUS:
-        return gen->builder.CreateSub(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_MUL:
-        return gen->builder.CreateMul(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_DIV:
-        return gen->builder.CreateSDiv(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_EQUAL:
-        return gen->builder.CreateICmpEQ(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_NOT_EQUAL:
-        return gen->builder.CreateICmpNE(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_LESS:
-        return gen->builder.CreateICmpSLT(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_GREATER:
-        return gen->builder.CreateICmpSGT(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_LESS_EQUAL:
-        return gen->builder.CreateICmpSLE(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_GREATER_EQUAL:
-        return gen->builder.CreateICmpSGE(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_AND:
-        return gen->builder.CreateAnd(lhsValue, rhsValue);
-    case TOKEN_OPERATOR_OR:
-        return gen->builder.CreateOr(lhsValue, rhsValue);
-    default:
-        return nullptr;
+	case TOKEN_OPERATOR_PLUS:
+	{
+		if (lhsType.isPointer() && rhsType.type(gen->ctx)->isIntegerTy())
+		{
+			return gen->builder.CreateGEP(
+				lhsType.elementType,
+				lhsValue,
+				rhsValue,
+				"ptr_add");
+		}
+		if (rhsType.isPointer() && lhsType.type(gen->ctx)->isIntegerTy())
+		{
+			return gen->builder.CreateGEP(
+				rhsType.elementType,
+				rhsValue,
+				lhsValue,
+				"ptr_add");
+		}
+		return gen->builder.CreateAdd(lhsValue, rhsValue);
+	}
+	case TOKEN_OPERATOR_MINUS:
+		return gen->builder.CreateSub(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_MUL:
+		return gen->builder.CreateMul(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_DIV:
+		return gen->builder.CreateSDiv(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_EQUAL:
+		return gen->builder.CreateICmpEQ(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_NOT_EQUAL:
+		return gen->builder.CreateICmpNE(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_LESS:
+		return gen->builder.CreateICmpSLT(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_GREATER:
+		return gen->builder.CreateICmpSGT(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_LESS_EQUAL:
+		return gen->builder.CreateICmpSLE(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_GREATER_EQUAL:
+		return gen->builder.CreateICmpSGE(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_AND:
+		return gen->builder.CreateAnd(lhsValue, rhsValue);
+	case TOKEN_OPERATOR_OR:
+		return gen->builder.CreateOr(lhsValue, rhsValue);
+	default:
+		return nullptr;
 	}
 }
 
 GType Generator::expressionType(ASTNode *expr, GScope *scope)
 {
-	if (auto* intLit = dynamic_cast<IntLiteral*>(expr)) {
+	if (auto *intLit = dynamic_cast<IntLiteral *>(expr))
+	{
 		return GType{llvm::Type::getInt32Ty(ctx), 0};
 	}
 
-	if (auto* stringLit = dynamic_cast<StringLiteral*>(expr)) {
+	if (auto *stringLit = dynamic_cast<StringLiteral *>(expr))
+	{
 		return GType{llvm::Type::getInt8Ty(ctx), 1};
 	}
 
-	if (auto* var = dynamic_cast<Variable*>(expr)) {
+	if (auto *var = dynamic_cast<Variable *>(expr))
+	{
 		return scope->getVar(var->name).second;
 	}
 
-	if (auto* unary = dynamic_cast<UnaryExpr*>(expr)) {
+	if (auto *unary = dynamic_cast<UnaryExpr *>(expr))
+	{
 		GType subType = expressionType(unary->expr, scope);
-		if (unary->op.type == TOKEN_POINTER) {
+		if (unary->op.type == TOKEN_POINTER)
+		{
 			return GType{subType.elementType, subType.depth - 1};
 		}
-		if (unary->op.type == TOKEN_REFERENCE) {
+		if (unary->op.type == TOKEN_REFERENCE)
+		{
 			return GType{subType.elementType, subType.depth + 1};
 		}
 		return subType;
 	}
 
-	if (auto* binary = dynamic_cast<BinaryExpr*>(expr)) {
+	if (auto *binary = dynamic_cast<BinaryExpr *>(expr))
+	{
 		GType lhsType = expressionType(binary->lhs, scope);
 		GType rhsType = expressionType(binary->rhs, scope);
 		return lhsType; // TODO: Fix this
@@ -343,7 +441,7 @@ GType Generator::expressionType(ASTNode *expr, GScope *scope)
 	return GType{llvm::Type::getInt32Ty(ctx), 0};
 }
 
-llvm::Value* Cast::codegen(GScope *scope, Generator *gen)
+llvm::Value *Cast::codegen(GScope *scope, Generator *gen)
 {
 	auto val = expr->codegen(scope, gen);
 
@@ -353,20 +451,28 @@ llvm::Value* Cast::codegen(GScope *scope, Generator *gen)
 	auto targetType = targetGType.type(gen->ctx);
 	auto sourceType = sourceGType.type(gen->ctx);
 
-	if (sourceType->isIntegerTy() && targetType->isIntegerTy()) {
+	if (sourceType->isIntegerTy() && targetType->isIntegerTy())
+	{
 		unsigned srcBits = sourceType->getIntegerBitWidth();
 		unsigned dstBits = targetType->getIntegerBitWidth();
 
-		if (srcBits == dstBits) {
+		if (srcBits == dstBits)
+		{
 			return val;
 		}
-		else if (srcBits < dstBits) {
-			if (type->isSigned()) {
+		else if (srcBits < dstBits)
+		{
+			if (type->isSigned())
+			{
 				return gen->builder.CreateSExt(val, targetType, "sext");
-			} else {
+			}
+			else
+			{
 				return gen->builder.CreateZExt(val, targetType, "zext");
 			}
-		} else {
+		}
+		else
+		{
 			return gen->builder.CreateTrunc(val, targetType, "trunc");
 		}
 	}
@@ -374,12 +480,11 @@ llvm::Value* Cast::codegen(GScope *scope, Generator *gen)
 	return nullptr;
 }
 
-
-llvm::Value* While::codegen(GScope *scope, Generator *gen)
+llvm::Value *While::codegen(GScope *scope, Generator *gen)
 {
 	auto func = gen->builder.GetInsertBlock()->getParent();
 
-	GScope* whileScope = new GScope(scope);
+	GScope *whileScope = new GScope(scope);
 
 	auto condBlock = llvm::BasicBlock::Create(gen->ctx, "cond", func);
 	auto bodyBlock = llvm::BasicBlock::Create(gen->ctx, "body", func);
@@ -401,25 +506,26 @@ llvm::Value* While::codegen(GScope *scope, Generator *gen)
 	return nullptr;
 }
 
-llvm::Value* Conditional::codegen(GScope *scope, Generator *gen)
+llvm::Value *Conditional::codegen(GScope *scope, Generator *gen)
 {
 
 	auto func = gen->builder.GetInsertBlock()->getParent();
 	auto mergeBB = llvm::BasicBlock::Create(gen->ctx, "if.end", func);
 
-	for (auto &condition: conditions)
+	for (auto &condition : conditions)
 	{
-		auto* condBB = llvm::BasicBlock::Create(gen->ctx, "if.cond", func);
-		auto* thenBB = llvm::BasicBlock::Create(gen->ctx, "if.then", func);
-		auto* elseBB = llvm::BasicBlock::Create(gen->ctx, "if.else", func);
+		auto *condBB = llvm::BasicBlock::Create(gen->ctx, "if.cond", func);
+		auto *thenBB = llvm::BasicBlock::Create(gen->ctx, "if.then", func);
+		auto *elseBB = llvm::BasicBlock::Create(gen->ctx, "if.else", func);
 		gen->builder.CreateBr(condBB);
-    gen->builder.SetInsertPoint(condBB);
+		gen->builder.SetInsertPoint(condBB);
 
 		if (condition.first)
 		{
-			GScope* condScope = new GScope(scope);
-      auto* condValue = condition.first->codegen(condScope, gen);
-      if (!condValue) return nullptr;
+			GScope *condScope = new GScope(scope);
+			auto *condValue = condition.first->codegen(condScope, gen);
+			if (!condValue)
+				return nullptr;
 
 			gen->builder.CreateCondBr(condValue, thenBB, elseBB);
 		}
@@ -431,13 +537,12 @@ llvm::Value* Conditional::codegen(GScope *scope, Generator *gen)
 		gen->builder.SetInsertPoint(thenBB);
 
 		{
-			GScope* thenScope = new GScope(scope);
+			GScope *thenScope = new GScope(scope);
 			condition.second->codegen(thenScope, gen);
 			gen->builder.CreateBr(mergeBB);
 		}
 
 		gen->builder.SetInsertPoint(elseBB);
-
 	}
 
 	gen->builder.CreateBr(mergeBB);
@@ -446,7 +551,7 @@ llvm::Value* Conditional::codegen(GScope *scope, Generator *gen)
 	return nullptr;
 }
 
-llvm::Value* Assign::codegen(GScope *scope, Generator *gen)
+llvm::Value *Assign::codegen(GScope *scope, Generator *gen)
 {
 	gen->inReferenceContext = true;
 	auto lvalue = lhs->codegen(scope, gen);
@@ -456,11 +561,11 @@ llvm::Value* Assign::codegen(GScope *scope, Generator *gen)
 	return gen->builder.CreateStore(rvalue, lvalue);
 }
 
-llvm::Value* VariableAccess::codegen(GScope *scope, Generator *gen)
+llvm::Value *VariableAccess::codegen(GScope *scope, Generator *gen)
 {
 	auto var = scope->getVar(varName);
 
-	for (auto& index: indexes)
+	for (auto &index : indexes)
 	{
 		if (auto arrayIndex = dynamic_cast<ArrayIndex *>(index))
 		{
@@ -477,27 +582,26 @@ llvm::Value* VariableAccess::codegen(GScope *scope, Generator *gen)
 		}
 		else if (auto structField = dynamic_cast<StructField *>(index))
 		{
-			llvm::StructType* structType = llvm::cast<llvm::StructType>(var.second.elementType);
+			llvm::StructType *structType = llvm::cast<llvm::StructType>(var.second.elementType);
 
 			auto fullName = structType->getName();
 			size_t colonPos = fullName.find(':');
 			auto module = fullName.substr(0, colonPos);
-      auto name = fullName.substr(colonPos + 1);
+			auto name = fullName.substr(colonPos + 1);
 
 			StructInfo info = gen->structSymbols[module.str()][name.str()];
 			unsigned int fieldIndex = info.getFieldIndex(structField->fieldName);
 
 			var.first = gen->builder.CreateStructGEP(
-					structType,
-					var.first,
-					fieldIndex,
-					varName + "." + structField->fieldName
-					);
+				structType,
+				var.first,
+				fieldIndex,
+				varName + "." + structField->fieldName);
 
 			var.second.elementType = structType->getElementType(fieldIndex);
 		}
 	}
-	
+
 	if (gen->inReferenceContext)
 	{
 		return var.first;
@@ -506,66 +610,68 @@ llvm::Value* VariableAccess::codegen(GScope *scope, Generator *gen)
 	return gen->builder.CreateLoad(var.second.elementType, var.first);
 }
 
-llvm::Value* UnaryExpr::codegen(GScope *scope, Generator *gen)
+llvm::Value *UnaryExpr::codegen(GScope *scope, Generator *gen)
 {
 	switch (op.type)
 	{
-		case TOKEN_OPERATOR_MINUS:
-			{
-				auto val = expr->codegen(scope, gen);
-				if (!val) return nullptr;
-				return gen->builder.CreateNeg(val);
-			}
-		case TOKEN_OPERATOR_NOT:
-			{
-			auto val = expr->codegen(scope, gen);
-			if (!val) return nullptr;
-			return gen->builder.CreateNot(val);
-			}
-		case TOKEN_POINTER:
-			{
-				auto val = expr->codegen(scope, gen);
-				auto ty = gen->expressionType(expr, scope);
-
-				if (gen->inReferenceContext)
-				{
-					if (dynamic_cast<Variable *>(expr))
-					{
-						return gen->builder.CreateLoad(ty.type(gen->ctx)->getPointerTo(), val);
-					}
-				}
-
-				GType loadedType{ty.elementType, ty.depth - 1};
-				return gen->builder.CreateLoad(loadedType.type(gen->ctx), val);
-			}
-		case TOKEN_REFERENCE:
-			{
-				gen->inReferenceContext = true;
-				auto val = expr->codegen(scope, gen);
-				if (!val) return nullptr;
-				gen->inReferenceContext = false;
-
-				if (!dynamic_cast<Variable *>(expr))
-				{
-					auto ty = gen->expressionType(expr, scope);
-					auto alloc = gen->builder.CreateAlloca(ty.type(gen->ctx)->getPointerTo());
-					gen->builder.CreateStore(val, alloc);
-					return alloc;
-				}
-
-				return val;
-
-			}
-		default:
+	case TOKEN_OPERATOR_MINUS:
+	{
+		auto val = expr->codegen(scope, gen);
+		if (!val)
 			return nullptr;
+		return gen->builder.CreateNeg(val);
+	}
+	case TOKEN_OPERATOR_NOT:
+	{
+		auto val = expr->codegen(scope, gen);
+		if (!val)
+			return nullptr;
+		return gen->builder.CreateNot(val);
+	}
+	case TOKEN_POINTER:
+	{
+		auto val = expr->codegen(scope, gen);
+		auto ty = gen->expressionType(expr, scope);
+
+		if (gen->inReferenceContext)
+		{
+			if (dynamic_cast<Variable *>(expr))
+			{
+				return gen->builder.CreateLoad(ty.type(gen->ctx)->getPointerTo(), val);
+			}
+		}
+
+		GType loadedType{ty.elementType, ty.depth - 1};
+		return gen->builder.CreateLoad(loadedType.type(gen->ctx), val);
+	}
+	case TOKEN_REFERENCE:
+	{
+		gen->inReferenceContext = true;
+		auto val = expr->codegen(scope, gen);
+		if (!val)
+			return nullptr;
+		gen->inReferenceContext = false;
+
+		if (!dynamic_cast<Variable *>(expr))
+		{
+			auto ty = gen->expressionType(expr, scope);
+			auto alloc = gen->builder.CreateAlloca(ty.type(gen->ctx)->getPointerTo());
+			gen->builder.CreateStore(val, alloc);
+			return alloc;
+		}
+
+		return val;
+	}
+	default:
+		return nullptr;
 	}
 }
 
-llvm::Value* ArrayLiteral::codegen(GScope *scope, Generator *gen)
+llvm::Value *ArrayLiteral::codegen(GScope *scope, Generator *gen)
 {
 	std::vector<llvm::Value *> elements;
 
-	for (auto val: values)
+	for (auto val : values)
 	{
 		elements.push_back(val->codegen(scope, gen));
 	}
@@ -586,8 +692,10 @@ unsigned int StructInfo::getFieldIndex(std::string fieldName)
 {
 	int fieldIndex = -1;
 
-	for (unsigned i = 0; i < fieldNames.size(); i++) {
-		if (fieldNames[i] == fieldName) {
+	for (unsigned i = 0; i < fieldNames.size(); i++)
+	{
+		if (fieldNames[i] == fieldName)
+		{
 			fieldIndex = i;
 			break;
 		}
@@ -596,7 +704,7 @@ unsigned int StructInfo::getFieldIndex(std::string fieldName)
 	return fieldIndex;
 }
 
-llvm::Value* StructLiteral::codegen(GScope *scope, Generator *gen)
+llvm::Value *StructLiteral::codegen(GScope *scope, Generator *gen)
 {
 	StructInfo info = gen->structSymbols[moduleName][name];
 
@@ -605,26 +713,26 @@ llvm::Value* StructLiteral::codegen(GScope *scope, Generator *gen)
 		std::cout << "Struct type does not exist!\n";
 	}
 
-	llvm::Value* alloc = gen->builder.CreateAlloca(info.type);
+	llvm::Value *alloc = gen->builder.CreateAlloca(info.type);
 
-	for (size_t i = 0; i < fieldNames.size(); ++i) {
+	for (size_t i = 0; i < fieldNames.size(); ++i)
+	{
 		unsigned int fieldIndex = info.getFieldIndex(fieldNames[i]);
-		llvm::Value* fieldValue = fieldExprs[i]->codegen(scope, gen);
+		llvm::Value *fieldValue = fieldExprs[i]->codegen(scope, gen);
 
-		llvm::Value* fieldPtr = gen->builder.CreateStructGEP(
-				info.type,
-				alloc,
-				fieldIndex,
-				"structfield." + fieldNames[i]
-				);
+		llvm::Value *fieldPtr = gen->builder.CreateStructGEP(
+			info.type,
+			alloc,
+			fieldIndex,
+			"structfield." + fieldNames[i]);
 
 		gen->builder.CreateStore(fieldValue, fieldPtr);
 	}
-	
+
 	return gen->builder.CreateLoad(info.type, alloc);
 }
 
-llvm::Value* VariableDecl::codegen(GScope *scope, Generator *gen)
+llvm::Value *VariableDecl::codegen(GScope *scope, Generator *gen)
 {
 	auto ty = gen->typeInfo(type);
 	auto val = expr->codegen(scope, gen);
@@ -636,7 +744,7 @@ llvm::Value* VariableDecl::codegen(GScope *scope, Generator *gen)
 	return alloc;
 }
 
-llvm::Value* Return::codegen(GScope *scope, Generator *gen)
+llvm::Value *Return::codegen(GScope *scope, Generator *gen)
 {
 	auto e = expr->codegen(scope, gen);
 
@@ -649,7 +757,7 @@ llvm::Value* Return::codegen(GScope *scope, Generator *gen)
 	return gen->builder.CreateRet(e);
 }
 
-llvm::Value* FunctionCall::codegen(GScope *scope, Generator *gen)
+llvm::Value *FunctionCall::codegen(GScope *scope, Generator *gen)
 {
 	if (!gen->functionSymbols.count(moduleName))
 	{
@@ -677,26 +785,29 @@ llvm::Value* FunctionCall::codegen(GScope *scope, Generator *gen)
 
 void Generator::displayFunctionSymbols()
 {
-	 std::cout << "Function Symbols Map Contents:\n";
-	 std::cout << "=============================\n";
+	std::cout << "Function Symbols Map Contents:\n";
+	std::cout << "=============================\n";
 
-	 for (const auto& modulePair : functionSymbols) {
-		 const std::string& moduleName = modulePair.first;
-		 std::cout << "Module: " << moduleName << "\n";
+	for (const auto &modulePair : functionSymbols)
+	{
+		const std::string &moduleName = modulePair.first;
+		std::cout << "Module: " << moduleName << "\n";
 
-		 for (const auto& functionPair : modulePair.second) {
-			 const std::string& functionName = functionPair.first;
-			 llvm::Function* func = functionPair.second;
+		for (const auto &functionPair : modulePair.second)
+		{
+			const std::string &functionName = functionPair.first;
+			llvm::Function *func = functionPair.second;
 
-			 std::cout << "  Function: " << functionName 
-				 << " (" << (void*)func << ")";
+			std::cout << "  Function: " << functionName
+					  << " (" << (void *)func << ")";
 
-			 if (func) {
-				 std::cout << " - " << func->getName().str()
-					 << ", args: " << func->arg_size();
-			 }
-			 std::cout << "\n";
-		 }
-	 }
-	 std::cout << "=============================\n";
+			if (func)
+			{
+				std::cout << " - " << func->getName().str()
+						  << ", args: " << func->arg_size();
+			}
+			std::cout << "\n";
+		}
+	}
+	std::cout << "=============================\n";
 }

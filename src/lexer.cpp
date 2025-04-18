@@ -16,7 +16,7 @@ InputBuffer::InputBuffer() : position(0), positionInFile({1, 0}) {}
 
 InputBuffer::InputBuffer(std::filesystem::path filename) : filename(filename)
 {
-    std::string contents = getContents(filename.c_str());
+    std::string contents = getContents(filename.string().c_str());
     buffer = contents;
     position = 0;
     positionInFile.row = 1;
@@ -86,26 +86,25 @@ bool InputBuffer::eof()
 
 Lexer::Lexer(std::filesystem::path filename)
 {
-	input = InputBuffer(filename);
+    input = InputBuffer(filename);
 }
- 
-std::unordered_map<std::string, TokenType> Lexer::keywords = 
-{
-    {"return", TOKEN_KEYWORD_RETURN},
-    {"for", TOKEN_KEYWORD_FOR},
-    {"while", TOKEN_KEYWORD_WHILE},
-    {"let", TOKEN_KEYWORD_LET},
-    {"if", TOKEN_KEYWORD_IF},
-    {"else", TOKEN_KEYWORD_ELSE},
-    {"true", TOKEN_BOOL_LITERAL},
-    {"false", TOKEN_BOOL_LITERAL},
-    {"null", TOKEN_KEYWORD_NULL},
-    {"struct", TOKEN_KEYWORD_STRUCT},
-    {"extern", TOKEN_KEYWORD_EXTERN},
-    {"import", TOKEN_KEYWORD_IMPORT},
-    {"module", TOKEN_KEYWORD_MODULE},
-    {"and", TOKEN_OPERATOR_AND}
-};
+
+std::unordered_map<std::string, TokenType> Lexer::keywords =
+    {
+        {"return", TOKEN_KEYWORD_RETURN},
+        {"for", TOKEN_KEYWORD_FOR},
+        {"while", TOKEN_KEYWORD_WHILE},
+        {"let", TOKEN_KEYWORD_LET},
+        {"if", TOKEN_KEYWORD_IF},
+        {"else", TOKEN_KEYWORD_ELSE},
+        {"true", TOKEN_BOOL_LITERAL},
+        {"false", TOKEN_BOOL_LITERAL},
+        {"null", TOKEN_KEYWORD_NULL},
+        {"struct", TOKEN_KEYWORD_STRUCT},
+        {"extern", TOKEN_KEYWORD_EXTERN},
+        {"import", TOKEN_KEYWORD_IMPORT},
+        {"module", TOKEN_KEYWORD_MODULE},
+        {"and", TOKEN_OPERATOR_AND}};
 
 std::unordered_map<TokenType, std::string> Lexer::tokenEnumToString = {
     {TOKEN_KEYWORD_RETURN, "TOKEN_KEYWORD_RETURN"},
@@ -163,13 +162,13 @@ void Lexer::display(std::vector<Token> tokens)
 {
     std::cout << "Tokens for file: " << input.filename << std::endl;
 
-		for (size_t i = 0; i < tokens.size(); ++i)
-		{
-			Token token = tokens[i];
-		 	std::cout << "Token: " << tokenEnumToString[token.type] << " Value: " << token.value
+    for (size_t i = 0; i < tokens.size(); ++i)
+    {
+        Token token = tokens[i];
+        std::cout << "Token: " << tokenEnumToString[token.type] << " Value: " << token.value
                   << " Position: Row: " << token.position.row << " Column: " << token.position.col << std::endl;
-		}
-    
+    }
+
     std::cout << std::endl;
 
     input.position = 0;
@@ -178,15 +177,15 @@ void Lexer::display(std::vector<Token> tokens)
 
 std::vector<Token> Lexer::tokens()
 {
-	std::vector<Token> tokens;
-	Token token;
-	do
-	{
-		token = next();
-		tokens.push_back(token);
-	} while (token.type != TOKEN_EOF);
+    std::vector<Token> tokens;
+    Token token;
+    do
+    {
+        token = next();
+        tokens.push_back(token);
+    } while (token.type != TOKEN_EOF);
 
-	return tokens;
+    return tokens;
 }
 
 Token Lexer::next()
@@ -285,7 +284,7 @@ Token Lexer::next()
 
             return {TOKEN_OPERATOR_GREATER, ">", position};
         case '&':
-            input.advance(); 
+            input.advance();
             return {TOKEN_REFERENCE, "&", position};
         case '|':
             input.advance();
@@ -324,7 +323,7 @@ Token Lexer::next()
         case ']':
             input.advance();
             return {TOKEN_RIGHT_SQUARE_BRACKET, "]", position};
-				case '@':
+        case '@':
             input.advance();
             return {TOKEN_AT, "@", position};
         case ';':
